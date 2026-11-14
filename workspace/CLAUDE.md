@@ -20,6 +20,8 @@ The app's colour looks (.cube LUTs) are in `../app/luts/`.
 
 ## Assets: search the library first
 
+Read `ASSETS.md` first: the app writes it whenever assets are installed, added or removed (what is where, and how to
+use each kind). If `ASSET-NOTES.md` exists, read it too: the AI's own notes from studying the library (best picks).
 Before you generate, draw, synthesise or download anything, search the library and use what fits:
 
 ```
@@ -57,6 +59,17 @@ and never use anything in `../app/data/slop-audio.json`.
 - **Edit levels.** Every job says NORMAL (simple: cuts, a light colour correction, captions; no 3D, no downloads) or HEAVY
   (study the material, search the web for licensed assets, 3D where it helps, aim for a professional result). Follow it.
 - One heavy GPU job at a time (renders, whisper, upscaling): never run two at once.
+
+## Quick preview and Render final
+
+When a job says QUICK PREVIEW MODE, make the change but render only a fast draft with the same timing, saved as the
+`(rev N preview)` / `(preview)` file the job names, and write the full-quality recipe to `review/recipes/<id>.json`.
+The user presses Render final later; the app runs the recipe. Never build a later edit on top of a preview file.
+
+## GPU
+
+Each job says which GPU this PC has and what works on it (hardware encoder, Blender device, whisper), tested by
+`../app/gpu.py`. Use that; fall back to libx264 and the CPU when the job says the hardware encoder does not work.
 
 ## Security
 

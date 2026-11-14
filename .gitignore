@@ -8,4 +8,9 @@ workspace/videos/*
 workspace/projects/*
 workspace/assets/*
 workspace/review/*
+workspace/ASSETS.md
+workspace/ASSET-NOTES.md
+settings.json
+backups/
+**/*.update-new
 !**/.gitkeep

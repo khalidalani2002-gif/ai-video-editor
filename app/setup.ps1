@@ -68,6 +68,8 @@ else {
     $assets = $rel | ForEach-Object { $_.assets }
     $asset = $null
     if ($nvidia) { $asset = $assets | Where-Object { $_.name -match "win-cuda-12.*x64\.zip|cublas-12.*x64\.zip" } | Select-Object -First 1 }
+    # AMD / Intel (no CUDA): the OpenBLAS CPU build is the fastest whisper.cpp for Windows x64
+    if (-not $asset) { $asset = $assets | Where-Object { $_.name -eq "whisper-blas-bin-x64.zip" } | Select-Object -First 1 }
     if (-not $asset) { $asset = $assets | Where-Object { $_.name -eq "whisper-bin-x64.zip" } | Select-Object -First 1 }
     $zip = Join-Path $env:TEMP $asset.name; Get-File $asset.browser_download_url $zip ($asset.digest -replace "^sha256:", "")   # GitHub's published digest
     New-Item -ItemType Directory -Force (Join-Path $WD "Release") | Out-Null
@@ -94,5 +96,9 @@ else { Write-Host "  skipped (run Setup.bat again and answer Y to add them)" }
 
 Step "7/7 Desktop shortcut"
 & (Join-Path $App "make_shortcut.ps1")
+
+Step "GPU check (NVIDIA / AMD / Intel)"
+# tests the hardware video encoders, the Blender render device and the whisper build; prints a driver link if one is too old
+& (Join-Path $App "python\python.exe") (Join-Path $App "gpu.py") --force
 
 Write-Host "`nSetup finished." -ForegroundColor Green

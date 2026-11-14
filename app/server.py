@@ -12,8 +12,21 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent                      # app/
 ROOT = HERE.parent / "workspace"                            # where Claude works: videos/, projects/, assets/, review/
-SETTINGS = json.loads((HERE.parent / "settings.json").read_text(encoding="utf-8")) if (HERE.parent / "settings.json").exists() else {}
-sys.path.insert(0, str(HERE))
+def _settings():
+    """app/data/settings.default.json (shipped, replaced by updates) under settings.json (yours, never replaced)"""
+    d = json.loads((HERE / "data" / "settings.default.json").read_text(encoding="utf-8")) if (HERE / "data" / "settings.default.json").exists() else {}
+    sp = HERE.parent / "settings.json"
+    cur = json.loads(sp.read_text(encoding="utf-8")) if sp.exists() else {}
+    if not sp.exists() or any(k not in cur for k in d):
+        sp.write_text(json.dumps({**d, **cur}, indent=2) + "\n", encoding="utf-8")
+    return {**d, **cur}
+
+
+SETTINGS = _settings()
+VERSION = (HERE.parent / "VERSION").read_text(encoding="utf-8").strip() if (HERE.parent / "VERSION").exists() else "1.0.0"
+sys.path.insert(0, str(HERE)); sys.path.insert(0, str(HERE / "tools"))
+import gpu as GPU                                           # NVIDIA / AMD / Intel: tested encoders, Blender device, whisper
+import learn_assets as LEARN                                # the asset library index + ASSETS.md guide
 import ai_tools as AI                                       # cuts, colour, checks, speech (ffmpeg + whisper.cpp)
 DATA = ROOT / "review"
 CACHE, FRAMES, LOGS = DATA / "cache", DATA / "frames", DATA / "logs"
@@ -183,17 +196,38 @@ _DEFAULT = []                                               # the Default assets
 
 def default_assets():
     if not _DEFAULT:
-        present = set()
-        base = ROOT / DEFAULT_DIR
-        for dirpath, _dirs, files in os.walk(base):
-            rel = Path(dirpath).relative_to(ROOT).as_posix()
-            present.update(f"{rel}/{f}" for f in files)
-        for it in load(HERE / "data" / "default-assets.json", []):
-            if it["path"] not in present: continue
+        if not LEARN.INDEX.exists(): LEARN.learn(quiet=True)
+        for it in load(LEARN.INDEX, []):
+            if not it["path"].startswith(DEFAULT_DIR + "/"): continue      # your own files are scanned live (user_assets)
             it["_t"] = f"{it['name']} {it.get('sub') or ''} {it['path']} {it['kind']}".lower()
             if is_restricted(it["path"]): it["restricted"] = True
             _DEFAULT.append(it)
     return _DEFAULT if use_restricted() else [x for x in _DEFAULT if not x.get("restricted")]
+
+
+ASSET_STATE = {"learning": False}
+
+
+def learn_if_changed(force=False):
+    """re-learn the library when files were installed, added or removed (checked at start and every 5 minutes)"""
+    if ASSET_STATE["learning"]: return
+    ASSET_STATE["learning"] = True
+    try:
+        if force or not LEARN.INDEX.exists() or LEARN.changed()[0]:
+            LEARN.learn(quiet=True); _DEFAULT.clear()
+    except Exception as e:
+        ASSET_STATE["error"] = str(e)
+    finally:
+        ASSET_STATE["learning"] = False
+
+
+def asset_state():
+    st = load(LEARN.STATE, {})
+    notes_f = ROOT / "ASSET-NOTES.md"
+    studied = st.get("studied_count", 0) if notes_f.exists() else 0
+    return {"count": st.get("count", 0), "learned": st.get("learned"), "by_kind": st.get("by_kind", {}),
+            "learning": ASSET_STATE["learning"], "studied": notes_f.exists(), "studied_at": st.get("studied_at"),
+            "suggest_study": st.get("count", 0) > 1000 and st.get("count", 0) - studied > 500}
 
 
 _EXTRA = []                                                 # HyperFrames effects + the app's looks (fixed)
@@ -305,11 +339,25 @@ def bin_add(new):
     return items
 
 
+GPU_INFO = {}
+
+
+def gpu_detect(force=False):
+    try: GPU_INFO.update(GPU.detect(DATA / "gpu.json", blender_path(), force=force))
+    except Exception as e: GPU_INFO.update(error=str(e))
+
+
+def gpu_block():
+    return "This PC (use what works here):\n" + GPU.summary(GPU_INFO) if GPU_INFO.get("key") else ""
+
+
 def caps():
     """which optional parts are installed on this PC (the UI disables what is missing)"""
     return {"claude": bool(claude_bin()), "codex": bool(codex_bin()), "codex_model": CODEX_MODEL,
             "ffmpeg": bool(shutil.which("ffmpeg")), "blender": bool(blender_path()),
-            "whisper": bool(AI.whisper_bin() and (AI.model_path("large-v3-turbo") or AI.model_path("small")))}
+            "whisper": bool(AI.whisper_bin() and (AI.model_path("large-v3-turbo") or AI.model_path("small"))),
+            "version": VERSION, "gpu": GPU.summary(GPU_INFO) if GPU_INFO.get("key") else "checking…",
+            "gpu_names": [a["name"] for a in GPU_INFO.get("adapters", [])]}
 
 
 def list_videos():
@@ -341,7 +389,14 @@ def add_video(vids, p):
 # ------------------------------------------------------------------ Claude jobs
 def vkey(path):
     """one Claude session per video, shared by its "(rev N)" versions"""
-    return re.sub(r" \(rev \d+\)(?=\.\w+$)", "", path)
+    return re.sub(r" \((?:rev \d+(?: preview)?|preview)\)(?=\.\w+$)", "", path)
+
+
+def final_of(rel):
+    """the final file a preview turns into: "x (rev 3 preview).mp4" -> "x (rev 3).mp4", "x (preview).mp4" -> "x.mp4"
+    """
+    rel = re.sub(r" \(rev (\d+) preview\)(?=\.\w+$)", r" (rev \1)", rel)
+    return re.sub(r" \(preview\)(?=\.\w+$)", "", rel)
 
 
 def claude_bin():
@@ -384,9 +439,12 @@ def words_text(words, a, b): return " ".join(w["text"] for w in words if w["end"
 
 def next_rev(rel):
     p = ROOT / rel
-    stem = re.sub(r" \(rev \d+\)$", "", p.stem)
-    nums = [int(m.group(1)) for f in p.parent.glob(f"{glob.escape(stem)} (rev *).*") if (m := re.search(r"\(rev (\d+)\)$", f.stem))]
+    stem = re.sub(r" \(rev \d+(?: preview)?\)$", "", p.stem)
+    nums = [int(m.group(1)) for f in p.parent.glob(f"{glob.escape(stem)} (rev *).*") if (m := re.search(r"\(rev (\d+)(?: preview)?\)$", f.stem))]
     return (p.parent / f"{stem} (rev {max(nums + [0]) + 1}).mp4").relative_to(ROOT).as_posix()
+
+
+def preview_rev(rel): return next_rev(rel)[:-len(").mp4")] + " preview).mp4"
 
 
 def new_id(): return time.strftime("%m%d-%H%M%S-") + uuid.uuid4().hex[:4]
@@ -521,15 +579,37 @@ def slop_block(n):
             "is better. Say in the summary which audio you chose.")
 
 
-def how_to(video, frames_hint):
+RECIPES = DATA / "recipes"; RECIPES.mkdir(exist_ok=True)
+FINAL_PROGRAMS = {"npx", "node", "ffmpeg", "ffprobe", "python", "py", "magick", "blender"}
+
+
+def draft_block(n, preview, rid):
+    if not n.get("draft"): return ""
+    hw = GPU_INFO.get("draft_encoder", "libx264") != "libx264"
+    enc = " ".join(GPU_INFO.get("draft_args") or ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "30"])
+    return f"""QUICK PREVIEW MODE (the user wants to see the change fast; they press "Render final" in the app afterwards):
+- Make the change exactly as for the final (project files, edit lists, scripts), but do NOT make the full-quality render.
+- Render a fast preview with the SAME duration and timing as the final (the app compares it frame by frame with the original):
+  HyperFrames `npx --yes hyperframes@0.9.43 render --quality draft{" --gpu" if hw else ""} -o "<preview>"`; ffmpeg: scale to
+  540 px high and `{enc} -c:a aac -b:a 128k`; Blender: half resolution and 16-32 samples with denoise (or EEVEE).
+- Save it as `{preview}`. Never use a preview file as the source of a later edit: build from the original sources or the project.
+- Write the recipe of the FINAL render to `review/recipes/{rid}.json` (do not run it):
+  {{"cwd": "<workspace-relative folder to run in>", "steps": [["program", "arg", ...], ...]}}
+  Programs allowed: npx, node, ffmpeg, ffprobe, python, magick, blender. The steps must rebuild the WHOLE current version (every
+  edit so far, not only this one) at full quality from the original sources, writing the final video to the placeholder
+  path "{{OUT}}" (the app fills in an absolute path). Quote nothing: each argument is its own list item."""
+
+
+def how_to(video, frames_hint, out=None):
     return f"""How to work:
 1. Follow `CLAUDE.md`. If this video is a project render (`projects/<name>/renders/`), read `projects/<name>/NOTES.md`
    and make the change in that project. If it is a plain video (e.g. in `videos/`), edit the file itself with ffmpeg, or
    start a project in `projects/<short-name>/` when the change needs HyperFrames.
    {ASSET_RULE}
-2. Make exactly the requested change, keeping everything else identical. Re-render the project the way it was built.
+2. Make exactly the requested change, keeping everything else identical. Re-render the project the way it was built
+   (in QUICK PREVIEW MODE: only the fast preview, plus the recipe).
 3. Verify: extract frames from the NEW render at the noted time and compare with {frames_hint}; check duration and loudness.
-4. Do NOT delete or overwrite the current video. Save the new version beside it as `{next_rev(video)}`.
+4. Do NOT delete or overwrite the current video. Save the new version beside it as `{out or next_rev(video)}`.
 5. Finish with one line exactly like `RESULT: <workspace-relative path of the new video>` followed by a short summary
    (in the user's language) of what you changed. If you cannot do it, explain why and print `RESULT: none`."""
 
@@ -545,8 +625,10 @@ def prompt_for(n):
 {slop_block(n)}
 {licence_block()}
 {SAFETY_RULE}
+{gpu_block()}
+{draft_block(n, preview_rev(n['video']), n['id'])}
 
-{how_to(n['video'], f"`review/frames/{n['id']}.png`")}"""
+{how_to(n['video'], f"`review/frames/{n['id']}.png`", preview_rev(n['video']) if n.get("draft") else None)}"""
 
 
 def prompt_batch(ns):
@@ -563,8 +645,10 @@ Do ALL of them in one pass and ONE re-render.
 {slop_block(ns[0])}
 {licence_block()}
 {SAFETY_RULE}
+{gpu_block()}
+{draft_block(ns[0], preview_rev(ns[0]['video']), ns[0]['id'])}
 
-{how_to(ns[0]['video'], "each note's frame image")}
+{how_to(ns[0]['video'], "each note's frame image", preview_rev(ns[0]['video']) if ns[0].get("draft") else None)}
 In the summary, say what you did for each note by its number."""
 
 
@@ -610,6 +694,8 @@ Format: {FORMATS.get(n.get("fmt") or "", "decide from the material (phone footag
 {slop_block(n)}
 {licence_block()}
 {SAFETY_RULE}
+{gpu_block()}
+{draft_block(n, "projects/<name>/renders/<name> (preview).mp4", n['id'])}
 
 How to work:
 1. Follow `CLAUDE.md` (house rules, tools) and use HyperFrames, ffmpeg or Blender as fits.
@@ -618,7 +704,7 @@ How to work:
    Make a new project folder `projects/<short-kebab-name>/`. Copy the user's files from `assets/` and `videos/` that you use
    into its `src/`. Use only facts, logos and contacts that the materials give; invent no claims.
 3. Build and render it. Verify the file: frames, duration, loudness -14 LUFS, true peak -1 dBTP or lower.
-4. Save the render as `projects/<name>/renders/<name>.mp4` (it then appears in the app's video list). Do not touch any other video.
+4. Save the render as `projects/<name>/renders/<name>{" (preview)" if n.get("draft") else ""}.mp4` (it then appears in the app's video list). Do not touch any other video.
 5. Write `projects/<name>/NOTES.md`: what was made, from which files, and how to rebuild it.
 6. Finish with one line exactly like `RESULT: <workspace-relative path of the new video>` followed by a short summary in English of
    what you made and the decisions you took. If you cannot make it, explain why and print `RESULT: none`."""
@@ -630,6 +716,107 @@ Apply the workspace rule "keep only the final": send the superseded `{n['video']
 Recycle Bin, then rename `{n['result']}` to the original clean name `{Path(n['video']).name}` in the same folder.
 Add one line about this change to the project's `NOTES.md` if it has one.
 Finish with `RESULT: <workspace-relative path of the final video>`."""
+
+
+def update_prompt(n):
+    return f"""Review Room: UPDATE the app from version {VERSION} to {n.get('to')} (the user pressed "Let Claude update" and is not watching).
+The app folder is `..` (this workspace is `../workspace`). Work carefully: the user's videos, projects and assets must survive.
+0. Note how many files are in `videos/`, `projects/` and `assets/`, and keep a copy of `../settings.json` values in mind.
+1. Run `../app/python/python.exe ../app/tools/update.py --plan` and read what will change.
+2. Run `../app/python/python.exe ../app/tools/update.py --apply`. It backs up every file it replaces into `../backups/`, never
+   writes the user's videos, projects, assets, notes or settings, verifies the result and rolls itself back on any error.
+   Read its last line `UPDATE_RESULT {{...}}`.
+3. Conflicts (`*.update-new` files) are app files the user edited: merge each by hand (keep the user's change and add the new
+   version's changes), then delete the `.update-new` file.
+4. If `../app/setup.ps1` now pins another HyperFrames version (`$HyperframesVersion`), run
+   `npx --yes hyperframes@<that version> skills update` here in the workspace.
+5. Check again: the same number of files in `videos/`, `projects/` and `assets/`, `review/notes.json` still there, and
+   `../settings.json` keeps the user's values. If anything is wrong, run `update.py --rollback` and report it.
+6. Do not start, restart or close the app yourself: it closes by itself when you finish, and the user reopens it.
+Finish with one line `UPDATED: <new version>` and a short summary of what is new (from `../CHANGELOG.md`), or
+`UPDATE FAILED: <reason>`."""
+
+
+def study_prompt(n):
+    return f"""Review Room: STUDY the asset library so that later jobs use it well (sent from the app; the user is not watching).
+1. Read `ASSETS.md` (what is installed and how each kind is used) and run `../app/python/python.exe tools/find_asset.py --summary`.
+2. Look at real samples, not only names: contact sheets of footage and illustrations (ffmpeg tile), durations and loudness of
+   music (ffprobe, ebur128), which fonts really contain Arabic letters (render a test line with magick or ffmpeg drawtext),
+   the HDRIs, 3D models and textures, and the looks (apply a few LUTs to one frame). Keep scratch files in `review/study/`
+   and delete them at the end.
+3. Write `ASSET-NOTES.md` here (at most about 250 lines): the best picks per purpose and mood, with exact paths: Arabic title and
+   body fonts that render correctly, music by mood/tempo with durations, sound-effect sets that belong together, overlays,
+   looks for skin, product and night shots, HDRIs and models for product, medical and room scenes. Note anything broken or
+   low quality to avoid.
+4. Do not change, move or delete any asset.
+{SAFETY_RULE}
+Finish with `RESULT: none` and a three-line summary."""
+
+
+def final_prompt(n, out_rel):
+    return f"""Review Room: render the FINAL full-quality version of the preview `{n['result']}` (the user pressed "Render final").
+The recipe `review/recipes/{n.get('recipe') or n['id']}.json` is missing or failed (see the log). Look at the project (`NOTES.md`,
+the build scripts, the HyperFrames project) and render the whole current version at full quality from the original sources
+(not from the preview) to `{out_rel}`. Same content and timing as the preview. Verify frames, duration and loudness.
+{SAFETY_RULE}
+{gpu_block()}
+Finish with one line `RESULT: {out_rel}` and a short summary, or `RESULT: none` with the reason."""
+
+
+def recycle(rel):
+    """send a workspace file to the Recycle Bin (never a hard delete)"""
+    p = safe(rel)
+    if not p.exists(): return
+    ps = ("Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile("
+          f"'{str(p).replace(chr(39), chr(39) * 2)}', 'OnlyErrorDialogs', 'SendToRecycleBin')")
+    subprocess.run(["powershell", "-NoProfile", "-Command", ps], creationflags=NOWIN, timeout=60)
+
+
+def run_final(nid):
+    """Render final for a preview: run the AI's recipe here (no AI needed); if there is none or it fails, ask the AI"""
+    n = get_note(nid)
+    if not n or not n.get("result"): return
+    out_rel = final_of(n["result"]); out = ROOT / out_rel
+    rid = n.get("recipe") or nid
+    recipe = load(RECIPES / f"{rid}.json", None) if SAFE_ID.fullmatch(rid) else None
+    update_note(nid, status="running", started=time.time()); RUNNING.update(note=nid, proc=None)
+    ok, why = False, "no recipe"
+    if isinstance(recipe, dict) and recipe.get("steps"):
+        try:
+            cwd = safe(recipe.get("cwd") or ".")
+            if out.exists(): out.unlink()
+            jlog(nid, f"— rendering the final from the recipe ({len(recipe['steps'])} steps) —")
+            for step in recipe["steps"]:
+                prog = Path(str(step[0])).stem.lower()
+                if prog not in FINAL_PROGRAMS: raise RuntimeError(f"program not allowed in a recipe: {step[0]}")
+                exe = blender_path() if prog == "blender" else (shutil.which(prog) or (sys.executable if prog in ("python", "py") else None))
+                if not exe: raise RuntimeError(f"{prog} not found")
+                args = [str(a).replace("{OUT}", str(out)) for a in step[1:]]
+                jlog(nid, "$ " + " ".join([prog] + args)[:400])
+                proc = subprocess.Popen([exe] + args, cwd=str(cwd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                                        encoding="utf-8", errors="replace", creationflags=NOWIN)
+                RUNNING.update(proc=proc)
+                tail = []
+                for line in proc.stdout:
+                    tail = (tail + [line.rstrip()])[-30:]
+                    if line.strip(): jlog(nid, line.rstrip()[:300])
+                if proc.wait():
+                    raise RuntimeError(f"{prog} exited with {proc.returncode}: " + " | ".join(tail[-3:])[:500])
+                if (get_note(nid) or {}).get("status") == "cancelled": RUNNING.update(note=None, proc=None); return
+            ok = out.exists() and probe(out).get("duration", 0) > 0
+            why = "" if ok else "the recipe finished but the final video is missing"
+        except Exception as e:
+            why = str(e)
+    RUNNING.update(note=None, proc=None)
+    if ok:
+        prev = n["result"]; recycle(prev)
+        for x in notes():                                       # every note of a batch points at the same preview
+            if x["id"] == nid or (x.get("result") == prev and x.get("preview")):
+                update_note(x["id"], status="created" if x.get("kind") == "create" else "review", result=out_rel, preview=False,
+                            summary=f"Final rendered: {out_rel} (the preview went to the Recycle Bin).")
+        return
+    jlog(nid, f"recipe could not render the final ({why}); asking the AI to render it")
+    update_note(nid, status="queued"); run_job(nid, "final")
 
 
 # ------------------------------------------------------------------ jobs (one at a time: they share the GPU)
@@ -651,6 +838,7 @@ def run_job(nid, mode):
     if not n: return
     engine = n.get("engine") if n.get("engine") in ENGINE_NAME else "claude"
     group = (n.get("batch_ids") or [nid]) if mode in ("batch", "approve") else [nid]
+    started = time.time()
 
     def upd(**kw):
         for i in group: update_note(i, **kw)
@@ -661,18 +849,22 @@ def run_job(nid, mode):
     upd(status="approving" if mode == "approve" else "running", started=time.time())
     notes_in = [x for x in (get_note(i) for i in group) if x]
     if mode == "create": prompt = prompt_create(n)
+    elif mode == "update": prompt = update_prompt(n)
+    elif mode == "study": prompt = study_prompt(n)
+    elif mode == "final": prompt = final_prompt(n, final_of(n["result"]))
     elif mode == "approve": prompt = approve_prompt(n)
     elif mode == "batch": prompt = prompt_batch(notes_in)
     else: prompt = prompt_for(n)
     sessions = load(SESS, {})
     heavy = n.get("level") == "heavy" and mode != "approve"   # normal: medium effort; heavy: high effort
     effort = "high" if heavy else "medium"
-    skey = (vkey(n["video"]) if engine == "claude" else "codex:" + vkey(n["video"])) if n.get("video") else None   # a creation starts fresh
+    skey = (vkey(n["video"]) if engine == "claude" else "codex:" + vkey(n["video"])) if n.get("video") and mode not in ("update", "study") else None
     resume = sessions.get(skey) if skey else None
     last_file = LOGS / f"{nid}.last.txt"
     if engine == "claude":
         cmd = [exe, "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits",
                "--model", MODEL, "--effort", effort, "--allowedTools", *ALLOWED, "--disallowedTools", *DENIED]
+        if mode == "update": cmd += ["--add-dir", str(HERE.parent)]              # the update edits the app folder too
         if resume: cmd += ["--resume", resume]
     else:
         cmd = [exe, "exec"] + (["resume", resume] if resume else []) + [
@@ -680,6 +872,7 @@ def run_job(nid, mode):
         if SETTINGS.get("codex_sandbox"):                                           # e.g. "workspace-write"; empty = your Codex config
             cmd += ["-s", SETTINGS["codex_sandbox"], "-c", "sandbox_workspace_write.network_access=true"]
         if not resume: cmd += ["-C", str(ROOT)]
+        if mode == "update": cmd += ["--add-dir", str(HERE.parent)]
         for x in notes_in if mode in ("edit", "batch") else []:                     # Codex sees the pinned frames directly
             f = FRAMES / f"{x['id']}.png"
             if f.exists(): cmd += ["-i", str(f)]
@@ -712,19 +905,70 @@ def run_job(nid, mode):
     if (get_note(nid) or {}).get("status") == "cancelled":    # stopped by the user: keep it that way
         for i in group: update_note(i, status="cancelled")
         return
+    if mode == "update":
+        now = (HERE.parent / "VERSION").read_text(encoding="utf-8").strip() if (HERE.parent / "VERSION").exists() else VERSION
+        done = re.search(r"^UPDATED:\s*(\S+)", final_text, flags=re.M) and LEARN_vt(now) > LEARN_vt(VERSION)
+        upd(status="updated" if done else "failed", installed=now, summary=final_text.strip()[-1500:])
+        if done: threading.Timer(8, lambda: os._exit(0)).start()          # close: the user reopens the new version
+        return
+    if mode == "study":
+        f = ROOT / "ASSET-NOTES.md"
+        ok = f.exists() and f.stat().st_mtime >= started - 5
+        if ok:
+            st = load(LEARN.STATE, {}); st.update(studied_count=st.get("count", 0), studied_at=time.time()); save(LEARN.STATE, st)
+        upd(status="done" if ok else "failed", summary=final_text.strip()[-1500:]); return
     m = re.findall(r"RESULT:\s*`?([^`\n]+?)`?\s*$", final_text, flags=re.M)
     res = m[-1].strip().replace("\\", "/") if m else None
     if res and res.lower() != "none" and (ROOT / res).exists():
-        if mode == "create":                                  # later notes on the new video continue this session
+        is_prev = bool(re.search(r"\((?:rev \d+ )?preview\)\.\w+$", res))
+        extra = {"preview": is_prev, "recipe": n["id"] if is_prev else None}
+        if mode == "final":
+            recycle(n["result"])
+            upd(status="created" if n.get("kind") == "create" else "review", result=res, preview=False, summary=final_text.strip()[-1500:])
+        elif mode == "create":                                  # later notes on the new video continue this session
             if sid:
                 sessions[vkey(res) if engine == "claude" else "codex:" + vkey(res)] = sid; save(SESS, sessions)
-            upd(status="created", result=res, summary=final_text.strip()[-1500:])
+            upd(status="created", result=res, summary=final_text.strip()[-1500:], **extra)
         elif mode == "approve":
             upd(status="approved", result=None, final=res, summary=final_text.strip()[-1500:])
         else:
-            upd(status="review", result=res, summary=final_text.strip()[-1500:])
+            upd(status="review", result=res, summary=final_text.strip()[-1500:], **extra)
     else:
         upd(status="failed" if p.returncode else "done", summary=(final_text or "No result. See the log.").strip()[-1500:])
+
+
+def LEARN_vt(v):
+    try: return tuple(int(x) for x in re.findall(r"\d+", v))
+    except Exception: return (0,)
+
+
+VCHECK = {"at": 0, "latest": None, "changes": ""}
+
+
+def version_info(refresh=False):
+    """installed version vs the newest on GitHub (checked at most every 6 hours unless refreshed)"""
+    man = load(HERE / "data" / "update-manifest.json", {})
+    if man.get("repo") and (refresh or time.time() - VCHECK["at"] > 6 * 3600):
+        VCHECK["at"] = time.time()
+        try:
+            import urllib.request
+            base = f"https://raw.githubusercontent.com/{man['repo']}/{man.get('branch', 'main')}/"
+            get = lambda f: urllib.request.urlopen(urllib.request.Request(base + f, headers={"User-Agent": "ai-video-editor"}), timeout=8).read().decode("utf-8")
+            VCHECK["latest"] = get("VERSION").strip()
+            try:
+                log = get("CHANGELOG.md")
+                parts = re.split(r"^## ", log, flags=re.M)[1:]
+                VCHECK["changes"] = "\n".join("## " + s.strip() for s in parts
+                                              if LEARN_vt(s.split()[0]) > LEARN_vt(VERSION))[:3000]
+            except Exception: VCHECK["changes"] = ""
+            VCHECK.pop("error", None)
+        except Exception as e:
+            VCHECK["error"] = str(e)[:200]
+    job = next((x for x in reversed(notes()) if x.get("kind") == "update"), None)
+    latest = VCHECK["latest"]
+    return {"installed": VERSION, "latest": latest, "update_available": bool(latest and LEARN_vt(latest) > LEARN_vt(VERSION)),
+            "changes": VCHECK["changes"], "error": VCHECK.get("error"), "repo": man.get("repo"),
+            "job": {k: job.get(k) for k in ("id", "status", "summary", "installed", "to")} if job else None}
 
 
 def run_ffmpeg_job(nid, mode):
@@ -771,6 +1015,7 @@ def worker():
         try:
             if mode == "transcribe": run_transcribe(key)
             elif mode in ("color", "look"): run_ffmpeg_job(key, mode)
+            elif mode == "final": run_final(key)
             else: run_job(key, mode)
         except Exception as e:
             if mode != "transcribe": update_note(key, status="failed", summary=f"Review Room error: {e}")
@@ -778,7 +1023,7 @@ def worker():
         JOBS.task_done()
 
 
-MODE_LABEL = {"approve": "approval", "batch": "batch edit (all notes, one render)", "create": "make a video", "edit": "edit"}
+MODE_LABEL = {"update": "app update", "study": "study the asset library", "final": "final render", "approve": "approval", "batch": "batch edit (all notes, one render)", "create": "make a video", "edit": "edit"}
 
 
 def log_lines(nid, since=0):
@@ -909,6 +1154,9 @@ class H(BaseHTTPRequestHandler):
                                        "items": [{k: v for k, v in it.items() if k != "_t"} for it in r["items"][:n]]})
             if u.path == "/api/settings":
                 return self.send_json({"use_restricted_assets": use_restricted(), "restricted": load(HERE / "data" / "restricted-assets.json", {}).get("folders", {})})
+            if u.path == "/api/version": return self.send_json(version_info(q.get("refresh") == "1"))
+            if u.path == "/api/assets/state": return self.send_json(asset_state())
+            if u.path == "/api/gpu": return self.send_json({"summary": GPU.summary(GPU_INFO) if GPU_INFO.get("key") else "checking…", **GPU_INFO})
             if u.path == "/api/styles": return self.send_json([{k: v for k, v in st.items() if k != "prompt"} for st in STYLES.values()])
             if u.path == "/api/asset": return self.send_file(safe(q["path"]))
             if u.path == "/api/bin": return self.send_json(bin_items())
@@ -975,7 +1223,7 @@ class H(BaseHTTPRequestHandler):
             nid = time.strftime("%m%d-%H%M%S-") + uuid.uuid4().hex[:4]
             if b.get("png"):
                 (FRAMES / f"{nid}.png").write_bytes(base64.b64decode(b["png"].split(",", 1)[1]))
-            n = {k: b.get(k) for k in ("video", "t", "x", "y", "box", "rin", "rout", "text", "level", "style", "engine", "noslop")}
+            n = {k: b.get(k) for k in ("video", "t", "x", "y", "box", "rin", "rout", "text", "level", "style", "engine", "noslop", "draft")}
             n["assets"] = [a for a in (b.get("assets") or []) if a.get("block") or a.get("lut") or (a.get("path") and safe(a["path"]).exists())]
             n.update(id=nid, info=probe(safe(b["video"])), status="draft", created=time.time())
             with LOCK:
@@ -983,7 +1231,7 @@ class H(BaseHTTPRequestHandler):
             if b.get("send"):
                 update_note(nid, status="queued"); JOBS.put((nid, "edit"))
             return self.send_json(n)
-        m = re.match(r"/api/notes/([\w-]+)/(send|approve|delete|cancel|restore)", u.path)
+        m = re.match(r"/api/notes/([\w-]+)/(send|approve|delete|cancel|restore|final)", u.path)
         if m:
             nid, act = m.groups()
             if act == "send":
@@ -992,6 +1240,10 @@ class H(BaseHTTPRequestHandler):
                 elif n.get("kind") in ("color", "look"): update_note(nid, status="queued"); JOBS.put((nid, n["kind"]))
                 else: update_note(nid, status="queued", batch_ids=None, log=None); JOBS.put((nid, "edit"))
             elif act == "approve": update_note(nid, status="queued"); JOBS.put((nid, "approve"))
+            elif act == "final":
+                n = get_note(nid) or {}
+                if not (n.get("preview") and n.get("result")): return self.send_json({"error": "not a preview"}, 400)
+                update_note(nid, status="queued"); JOBS.put((nid, "final"))
             elif act == "cancel" and RUNNING["note"] == nid and RUNNING["proc"]:
                 RUNNING["proc"].terminate(); update_note(nid, status="cancelled")
             elif act == "delete":                                      # to the trash (Ctrl+Z restores it)
@@ -1012,8 +1264,30 @@ class H(BaseHTTPRequestHandler):
             drafts = [n for n in notes() if n["video"] == b["path"] and n["status"] == "draft" and not n.get("kind")]
             if not drafts: return self.send_json({"error": "no draft notes"}, 400)
             ids = [n["id"] for n in sorted(drafts, key=lambda n: n["t"])]
-            for i in ids: update_note(i, status="queued", batch_ids=ids, log=ids[0], level=b.get("level") or "normal", style=b.get("style") or "auto", engine=b.get("engine") or "claude", noslop=bool(b.get("noslop")))
+            for i in ids: update_note(i, status="queued", batch_ids=ids, log=ids[0], level=b.get("level") or "normal", style=b.get("style") or "auto", engine=b.get("engine") or "claude", noslop=bool(b.get("noslop")), draft=bool(b.get("draft")))
             JOBS.put((ids[0], "batch")); return self.send_json({"ok": True, "lead": ids[0], "count": len(ids)})
+        if u.path == "/api/update":                                    # "Let Claude update": one AI job runs update.py
+            v = version_info(refresh=True)
+            if not v["update_available"]: return self.send_json({"error": "no update", **v}, 400)
+            if v["job"] and v["job"]["status"] in ("queued", "running"): return self.send_json({"error": "already updating"}, 400)
+            n = {"id": new_id(), "kind": "update", "video": None, "t": 0, "text": f"Update the app to {v['latest']}", "to": v["latest"],
+                 "engine": b.get("engine") if b.get("engine") in ENGINE_NAME else "claude", "level": "normal", "status": "queued",
+                 "created": time.time(), "info": {}}
+            with LOCK:
+                ns = notes(); ns.append(n); save(NOTES, ns)
+            JOBS.put((n["id"], "update")); return self.send_json(n)
+        if u.path == "/api/assets/learn":
+            threading.Thread(target=learn_if_changed, kwargs={"force": True}, daemon=True).start()
+            return self.send_json({"ok": True})
+        if u.path == "/api/assets/study":
+            n = {"id": new_id(), "kind": "study", "video": None, "t": 0, "text": "Study the asset library",
+                 "engine": b.get("engine") if b.get("engine") in ENGINE_NAME else "claude", "level": "normal", "status": "queued",
+                 "created": time.time(), "info": {}}
+            with LOCK:
+                ns = notes(); ns.append(n); save(NOTES, ns)
+            JOBS.put((n["id"], "study")); return self.send_json(n)
+        if u.path == "/api/gpu":
+            threading.Thread(target=gpu_detect, kwargs={"force": True}, daemon=True).start(); return self.send_json({"ok": True})
         if u.path == "/api/settings":
             if "use_restricted_assets" in b: save_settings(use_restricted_assets=bool(b["use_restricted_assets"]))
             return self.send_json({"use_restricted_assets": use_restricted()})
@@ -1025,7 +1299,7 @@ class H(BaseHTTPRequestHandler):
             items = [i for i in (b.get("items") or []) if i.get("block") or i.get("lut") or (i.get("path") and safe(i["path"]).exists())]
             nid = new_id()
             n = {"id": nid, "kind": "create", "video": None, "t": 0, "text": (b.get("text") or "").strip(), "items": items,
-                 "fmt": b.get("fmt") or "", "level": b.get("level") or "normal", "style": b.get("style") or "auto", "engine": b.get("engine") or "claude", "noslop": bool(b.get("noslop")), "status": "queued", "created": time.time(), "info": {}}
+                 "fmt": b.get("fmt") or "", "level": b.get("level") or "normal", "style": b.get("style") or "auto", "engine": b.get("engine") or "claude", "noslop": bool(b.get("noslop")), "draft": bool(b.get("draft")), "status": "queued", "created": time.time(), "info": {}}
             with LOCK:
                 ns = notes(); ns.append(n); save(NOTES, ns)
             JOBS.put((nid, "create")); return self.send_json(n)
@@ -1090,10 +1364,13 @@ def main():
         if n.get("status") in ("queued", "running", "approving"):
             update_note(n["id"], status="draft")
     threading.Thread(target=worker, daemon=True).start()
+    threading.Thread(target=gpu_detect, daemon=True).start()
 
     def idle():
+        n = 0
         while True:
-            time.sleep(30); WD.idle_check()
+            time.sleep(30); WD.idle_check(); n += 1
+            if n % 10 == 1: learn_if_changed()                       # assets installed / added / removed: learn them
     threading.Thread(target=idle, daemon=True).start()
     srv = ThreadingHTTPServer(("127.0.0.1", PORT), H)
     print(f"Review Room on http://127.0.0.1:{PORT}  (workspace {ROOT})", flush=True)

@@ -413,7 +413,7 @@ async function saveNote(send) {
   video.pause();
   const t = video.currentTime;
   const png = captureFrame();
-  const body = { video: S.path, t, text, png, send, level: $("#levelSel").value, style: STYLE.editor, engine: ENGINE, assets: S.drops.map(({ thumb, ...a }) => a),
+  const body = { video: S.path, t, text, png, send, level: $("#levelSel").value, style: STYLE.editor, engine: ENGINE, draft: DRAFT, assets: S.drops.map(({ thumb, ...a }) => a),
     x: S.pin ? S.pin[0] : null, y: S.pin ? S.pin[1] : null, box: S.box,
     rin: S.rin != null ? Math.min(S.rin, S.rout) : null, rout: S.rout != null ? Math.max(S.rin, S.rout) : null };
   const n = await post("/api/notes", body);
@@ -451,6 +451,7 @@ function renderNotes() {
       + (n.severity ? `<span class="chip sev-${n.severity}">${n.severity}</span>` : "")
       + (KIND[n.kind] ? `<span class="chip ai">${KIND[n.kind]}</span>` : "")
       + (n.engine === "codex" ? '<span class="chip eng">Codex</span>' : "")
+      + (n.preview ? '<span class="chip prev">⚡ preview</span>' : n.draft && !n.result ? '<span class="chip prev">⚡ quick preview</span>' : "")
       + (n.batch_ids && n.batch_ids.length > 1 ? `<span class="chip batch">batch of ${n.batch_ids.length}</span>` : "");
     el.innerHTML = `<div class="top"><span class="num">${i + 1}</span><span class="chip when">${tc(n.t)}</span>
       <span class="st ${n.status}">${LABEL[n.status] || n.status}</span><div class="spacer"></div></div>
@@ -469,7 +470,11 @@ function renderNotes() {
     const busy = ["queued", "running", "approving"].includes(n.status);
     if (busy || n.started) b("Progress", () => openLog(n.id));
     if (["draft", "failed", "cancelled", "done"].includes(n.status)) b(n.status === "draft" ? "Send to Claude ➜" : n.kind ? "Run again" : "Send again", () => post(`/api/notes/${n.id}/send`).then(() => { openLog(n.id); loadNotes(); }), n.status === "draft" ? "primary" : "ghost");
-    if (n.status === "review" && n.result) {
+    if (n.status === "review" && n.result && n.preview) {
+      b(S.compare === n.result && S.showingB ? "Show original (A)" : "Compare A/B", () => toggleCompare(n.result));
+      b("Open preview", () => openVideo(n.result, true));
+      b("🎬 Render final", () => post(`/api/notes/${n.id}/final`).then(() => { openLog(n.id); loadNotes(); toast("Rendering the full-quality version…"); }), "primary");
+    } else if (n.status === "review" && n.result) {
       b(S.compare === n.result && S.showingB ? "Show original (A)" : "Compare A/B", () => toggleCompare(n.result));
       b("Open new version", () => openVideo(n.result, true));
       b("Approve ✓", () => { if (confirm("Approve the new version? The old one goes to the Recycle Bin and the new one takes its name.")) post(`/api/notes/${n.id}/approve`).then(() => { openLog(n.id); loadNotes(); }); }, "primary");
@@ -613,7 +618,7 @@ document.addEventListener("click", (e) => { if (!e.target.closest(".dd")) $("#ac
 
 // ---------------------------------------------------------------- send all drafts
 $("#sendAll").onclick = async () => {
-  const j = await post("/api/batch", { path: S.path, level: $("#levelSel").value, style: STYLE.editor, engine: ENGINE });
+  const j = await post("/api/batch", { path: S.path, level: $("#levelSel").value, style: STYLE.editor, engine: ENGINE, draft: DRAFT });
   if (j.error) return alert(j.error);
   openLog(j.lead); loadNotes();
 };
@@ -872,7 +877,7 @@ $("#mkGo").onclick = async () => {
   if (!SEL.size) return;
   const text = $("#mkText").value.trim();
   if (!confirm(`${ENGINE_LABEL()} will make a NEW video from ${SEL.size} selected item${SEL.size > 1 ? "s" : ""}${text ? "" : " and decide everything itself (no instructions given)"}. It runs in the background; nothing existing is changed. Start?`)) return;
-  const n = await post("/api/create", { items: [...SEL.values()], text, fmt: $("#mkFmt").value, level: $("#mkLevel").value, style: STYLE.tray, engine: ENGINE, noslop: NOSLOP });
+  const n = await post("/api/create", { items: [...SEL.values()], text, fmt: $("#mkFmt").value, level: $("#mkLevel").value, style: STYLE.tray, engine: ENGINE, noslop: NOSLOP, draft: DRAFT });
   $("#mkText").value = ""; SEL.clear(); renderSel(); openLog(n.id); loadCreations();
 };
 
@@ -892,6 +897,7 @@ async function loadCreations() {
     const acts = r.querySelector(".acts");
     const b = (label, fn, cls = "ghost small") => { const x = document.createElement("button"); x.className = cls; x.textContent = label; x.onclick = fn; acts.appendChild(x); };
     b("Progress", () => openLog(n.id));
+    if (n.result && n.preview && n.status === "created") b("🎬 Render final", () => post(`/api/notes/${n.id}/final`).then(() => { openLog(n.id); loadCreations(); }), "primary small");
     if (n.result) b("Open ▶", () => { setMode("editor"); showTab(false); loadVideos().then(() => openVideo(n.result)); }, "primary small");
     if (["failed", "done", "cancelled", "draft"].includes(n.status)) b("Run again", () => post(`/api/notes/${n.id}/send`).then(() => { openLog(n.id); loadCreations(); }));
     if (!["queued", "running"].includes(n.status)) b("✕", () => deleteNote(n));
@@ -1149,7 +1155,7 @@ $("#mkGo2").onclick = async () => {
   const level = $("#mkLevel2").value;
   const what = SEL.size ? `from ${SEL.size} item${SEL.size > 1 ? "s" : ""}` : "from your description only (an animation or a 3D video)";
   if (!confirm(`${ENGINE_LABEL()} will make a NEW video ${what}, as a ${level} edit${text ? "" : ", deciding everything itself"}. It runs in the background. Start?`)) return;
-  const n = await post("/api/create", { items: [...SEL.values()], text, fmt: $("#mkFmt2").value, level, style: STYLE.make, engine: ENGINE, noslop: NOSLOP });
+  const n = await post("/api/create", { items: [...SEL.values()], text, fmt: $("#mkFmt2").value, level, style: STYLE.make, engine: ENGINE, noslop: NOSLOP, draft: DRAFT });
   $("#mkDesc").value = ""; SEL.clear(); renderSel(); openLog(n.id); loadCreations();
 };
 $("#mkMic").onclick = () => dictate($("#mkMic"), $("#mkDesc"));
@@ -1512,5 +1518,87 @@ $("#setRestricted").onchange = async () => {
   toast(j.use_restricted_assets ? "Claude and Codex may use every asset" : "Only shareable assets will be used");
   if (MODE === "editor") renderBin(); if (MODE === "make") renderMakeBin();
 };
+
+
+// ---------------------------------------------------------------- v1.1: quick preview (fast drafts, then Render final)
+let DRAFT = true;
+try { DRAFT = localStorage.getItem("rr.draft") !== "0"; } catch (e) { DRAFT = true; }
+function setDraft(on) {
+  DRAFT = !!on;
+  try { localStorage.setItem("rr.draft", DRAFT ? "1" : "0"); } catch (e) { /* per-viewer convenience only */ }
+  for (const id of ["#draftT", "#draftE", "#draft2"]) {
+    const b = $(id); if (!b) continue;
+    b.classList.toggle("on", DRAFT); b.setAttribute("aria-pressed", String(DRAFT));
+    b.textContent = DRAFT ? "⚡ Quick preview: on" : "⚡ Quick preview: off";
+  }
+}
+for (const id of ["#draftT", "#draftE", "#draft2"]) $(id).onclick = () => {
+  setDraft(!DRAFT); toast(DRAFT ? "Fast draft first; press Render final when you like it" : "Every edit renders the full-quality video");
+};
+setDraft(DRAFT);
+
+// ---------------------------------------------------------------- v1.1: version + "Let Claude update"
+let VER = null;
+async function checkVersion(refresh) {
+  try { VER = await api("/api/version" + (refresh ? "?refresh=1" : "")); } catch (e) { return; }
+  $("#verPill").textContent = "v" + VER.installed;
+  const up = VER.update_available;
+  $("#updBtn").classList.toggle("hidden", !up);
+  if (up) $("#updBtn").textContent = `⬆ Update to ${VER.latest}`;
+  $("#setVer").textContent = `Installed ${VER.installed}` + (VER.latest ? ` · newest on GitHub ${VER.latest}` : "")
+    + (VER.error ? ` · could not check (${VER.error})` : up ? "" : VER.latest ? " · up to date ✓" : "");
+  $("#setVerUpd").classList.toggle("hidden", !up);
+  $("#setChanges").classList.toggle("hidden", !(up && VER.changes)); $("#setChanges").textContent = VER.changes || "";
+  const job = VER.job;
+  if (job && ["queued", "running", "updated"].includes(job.status)) showUpdating(job);
+  else $("#updOverlay").classList.add("hidden");
+}
+function showUpdating(job) {
+  $("#updOverlay").classList.remove("hidden");
+  $("#updLog").onclick = () => openLog(job.id);
+  if (job.status === "updated") {
+    $("#updTitle").textContent = `Updated to ${job.installed} ✓`;
+    $("#updText").textContent = "The app is closing now. Open it again from the desktop (Review Room App) to use the new version. Your videos, projects and assets were kept; the replaced files are in the backups folder.";
+  } else {
+    $("#updTitle").textContent = `${ENGINE_LABEL()} is updating the app…`;
+    $("#updText").textContent = "It backs up every file it replaces, keeps your videos, projects, assets and settings, and checks the result. The app closes by itself when it is done.";
+    setTimeout(() => checkVersion(false), 3000);
+  }
+}
+async function startUpdate() {
+  if (!VER || !VER.update_available) return;
+  if (!confirm(`Update to ${VER.latest}?\n\n${ENGINE_LABEL()} runs the safe updater: it backs up the app files it replaces, never touches your videos, projects, assets or settings, and verifies the result. The app closes when it finishes; then open it again.`)) return;
+  const j = await post("/api/update", { engine: ENGINE });
+  if (j.error) return toast(j.error);
+  $("#setModal").classList.add("hidden"); showUpdating(j);
+}
+$("#updBtn").onclick = startUpdate; $("#setVerUpd").onclick = startUpdate;
+$("#setVerCheck").onclick = () => { $("#setVer").textContent = "checking…"; checkVersion(true); };
+checkVersion(false);
+setInterval(() => { if (!document.hidden) checkVersion(false); }, 30 * 60 * 1000);
+
+// ---------------------------------------------------------------- v1.1: asset learning + GPU in Settings
+async function refreshAssetsInfo() {
+  let s; try { s = await api("/api/assets/state"); } catch (e) { return; }
+  const when = s.learned ? new Date(s.learned * 1000).toLocaleString() : "never";
+  $("#setAssets").textContent = s.learning ? "learning…" : `${(s.count || 0).toLocaleString()} assets learned (${when})`
+    + (s.studied ? ` · studied by the AI${s.studied_at ? " " + new Date(s.studied_at * 1000).toLocaleDateString() : ""}` : " · not studied yet");
+  let dismissed = 0; try { dismissed = +(localStorage.getItem("rr.studyNo") || 0); } catch (e) { dismissed = 0; }
+  if (s.suggest_study && s.count !== dismissed) {
+    $("#studyText").textContent = `${s.count.toLocaleString()} assets installed and learned. Let ${ENGINE_LABEL()} study them, so it knows the best picks?`;
+    $("#studyBar").classList.remove("hidden");
+  }
+  $("#studyNo").onclick = () => { try { localStorage.setItem("rr.studyNo", String(s.count)); } catch (e) { /* convenience */ } $("#studyBar").classList.add("hidden"); };
+}
+async function startStudy() {
+  const j = await post("/api/assets/study", { engine: ENGINE });
+  $("#studyBar").classList.add("hidden"); openLog(j.id); toast(`${ENGINE_LABEL()} is studying the library (writes ASSET-NOTES.md)`);
+}
+$("#studyGo").onclick = startStudy; $("#setStudy").onclick = startStudy;
+$("#setLearn").onclick = async () => { await post("/api/assets/learn"); $("#setAssets").textContent = "learning…"; setTimeout(refreshAssetsInfo, 4000); };
+async function refreshGpu() { try { $("#setGpu").textContent = (await api("/api/gpu")).summary; } catch (e) { /* stays */ } }
+$("#setGpuCheck").onclick = async () => { $("#setGpu").textContent = "testing…"; await post("/api/gpu"); setTimeout(refreshGpu, 9000); };
+$("#setBtn").addEventListener("click", () => { refreshAssetsInfo(); refreshGpu(); checkVersion(false); });
+setTimeout(refreshAssetsInfo, 5000);
 
 loadVideos();

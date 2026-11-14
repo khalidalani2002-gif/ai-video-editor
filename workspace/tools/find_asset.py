@@ -26,16 +26,10 @@ def load(p, default):
 def library():
     settings = load(WS.parent / "settings.json", {})
     blocked = tuple(load(APP / "data" / "restricted-assets.json", {}).get("folders", {})) if settings.get("use_restricted_assets") is False else ()
-    present = set()
-    for dirpath, _d, files in os.walk(WS / "assets" / "Default assets"):
-        rel = Path(dirpath).relative_to(WS).as_posix(); present.update(f"{rel}/{f}" for f in files)
-    items = [it for it in load(APP / "data" / "default-assets.json", []) if it["path"] in present and not (blocked and it["path"].startswith(blocked))]
-    base = WS / "assets"
-    for top in base.iterdir() if base.exists() else []:                 # your own files (never walk Default assets)
-        if top.name == "Default assets": continue
-        for f in [top] if top.is_file() else top.rglob("*"):
-            if f.is_file():
-                items.append({"kind": EXT.get(f.suffix.lower(), "file"), "path": f.relative_to(WS).as_posix(), "name": f.stem, "sub": "your file"})
+    sys.path.insert(0, str(APP / "tools"))
+    import learn_assets                                                  # the learned index: every file on disk, kept fresh
+    if not (WS / "review" / "asset-index.json").exists() or learn_assets.changed()[0]: learn_assets.learn(quiet=True)
+    items = [it for it in load(WS / "review" / "asset-index.json", []) if not (blocked and it["path"].startswith(blocked))]
     for e in load(APP / "data" / "hyperframes-registry.json", []):
         items.append({"kind": "effect", "path": f"npx hyperframes add {e['name']}", "name": e.get("title") or e["name"],
                       "sub": " ".join(e.get("tags", [])[:4]), "desc": e.get("description", "")})

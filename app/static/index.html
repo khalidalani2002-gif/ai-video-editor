@@ -11,6 +11,8 @@
   <div class="brand"><img src="/static/icon.png" alt=""> Review Room</div>
   <button id="homeBtn" class="ghost small hidden" title="Back to the start screen">⌂ Home</button>
   <div id="claudeState" class="pill">…</div>
+  <span id="verPill" class="pill" title="App version">v…</span>
+  <button id="updBtn" class="primary small hidden" title="A new version is on GitHub">⬆ Update available</button>
   <div class="spacer"></div>
   <span class="hint">Space play · ←/→ frame · Shift+←/→ 1 s · ↑/↓ cut · wheel on timeline = zoom · wheel on picture = frame step · = / − zoom · \ fit · I / O range · click = pin · drag = box · Esc clear</span>
   <button id="setBtn" class="ghost" title="Settings">⚙ Settings</button>
@@ -44,6 +46,7 @@
           <select id="mkEngine" class="lvl eng" title="Which AI makes the edit"><option value="claude">Claude</option><option value="codex">Codex</option></select>
           <select id="mkLevel" class="lvl"><option value="normal">Normal edit</option><option value="heavy">Heavy edit</option></select>
           <button id="mkStyleT" class="ghost styleBtn">Style: Auto ▾</button>
+          <button id="draftT" class="ghost draftBtn" aria-pressed="false" title="Quick preview: the AI makes the edit and renders only a fast draft; press Render final when you like it">⚡ Quick preview</button>
           <button id="noSlopT" class="ghost slopBtn" aria-pressed="false" title="Ignore the overused stock sounds AI videos keep using (the whooshes, pops, risers and corporate tracks found in earlier Claude videos)">🔇 Remove AI slop audio</button>
           <span class="spacer"></span><button id="mkGo" class="primary">Make video ➜</button></div>
       </div>
@@ -121,6 +124,7 @@
         <select id="engineSel" class="lvl eng" title="Which AI makes the edit"><option value="claude">Claude</option><option value="codex">Codex</option></select>
         <select id="levelSel" class="lvl"><option value="normal">Normal edit</option><option value="heavy">Heavy edit</option></select>
         <button id="styleBtn" class="ghost styleBtn">Style: Auto ▾</button>
+        <button id="draftE" class="ghost draftBtn" aria-pressed="false" title="Quick preview: the AI makes the edit and renders only a fast draft; press Render final when you like it">⚡ Quick preview</button>
         <div class="spacer"></div>
         <button id="saveNote" class="ghost">Save note</button>
         <button id="sendNote" class="primary">Send to Claude ➜</button>
@@ -173,6 +177,7 @@
       <label class="engLbl">Make with <select id="mkEngine2" class="lvl eng" title="Which AI makes the edit"><option value="claude">Claude</option><option value="codex">Codex</option></select></label>
       <select id="mkLevel2" class="lvl"><option value="normal">Normal edit</option><option value="heavy">Heavy edit</option></select>
       <button id="mkStyle2" class="ghost styleBtn">Style: Auto ▾</button>
+      <button id="draft2" class="ghost draftBtn" aria-pressed="false" title="Quick preview: the AI makes the edit and renders only a fast draft; press Render final when you like it">⚡ Quick preview</button>
       <button id="noSlop2" class="ghost slopBtn" aria-pressed="false" title="Ignore the overused stock sounds AI videos keep using (the whooshes, pops, risers and corporate tracks found in earlier Claude videos)">🔇 Remove AI slop audio</button>
       <span class="spacer"></span>
       <button id="mkGo2" class="primary big">Make video ➜</button>
@@ -196,7 +201,23 @@
     <span><b>Use assets that can't be shared</b><br><small>Free to use in your own videos, but their licence (or privacy) forbids
     sharing the files. When off, Claude, Codex and the asset browser ignore them.</small></span></label>
   <ul id="setList"></ul>
+  <div class="setSec"><b>Version</b>
+    <div id="setVer" class="muted">…</div>
+    <div class="row"><button id="setVerCheck" class="ghost small">Check for updates</button>
+      <button id="setVerUpd" class="primary small hidden">Let Claude update</button></div>
+    <pre id="setChanges" class="hidden"></pre></div>
+  <div class="setSec"><b>Asset library</b>
+    <div id="setAssets" class="muted">…</div>
+    <div class="row"><button id="setLearn" class="ghost small" title="Index the library again and rewrite ASSETS.md">Re-learn now</button>
+      <button id="setStudy" class="ghost small" title="An AI job looks at real samples and writes ASSET-NOTES.md with its best picks">Let the AI study them</button></div></div>
+  <div class="setSec"><b>GPU</b>
+    <pre id="setGpu">checking…</pre>
+    <div class="row"><button id="setGpuCheck" class="ghost small">Test again</button></div></div>
 </div>
+<div id="updOverlay" class="hidden"><div class="updBox"><h2 id="updTitle">Updating…</h2><p id="updText" class="muted"></p>
+  <div class="row"><button id="updLog" class="ghost small">Progress</button></div></div></div>
+<div id="studyBar" class="hidden"><span id="studyText"></span><span class="spacer"></span>
+  <button id="studyGo" class="primary small">Let Claude study them</button><button id="studyNo" class="ghost small">Not now</button></div>
 <div id="stylePop" class="hidden"></div>
 <div id="dropHint" class="hidden"></div>
 <div id="qv" class="hidden"></div>

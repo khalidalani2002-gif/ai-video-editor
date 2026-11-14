@@ -11,12 +11,16 @@ A Windows desktop app where **Claude Code** or **OpenAI Codex** edit and make vi
 - **A 53,000-item asset library** that the AI searches before generating anything: music, sound effects, fonts, icons,
   emoji, footage, colour looks, HDRIs, 3D models, illustrations, maps.
 - **Remove AI slop audio:** one switch keeps the AI away from the overused whooshes, pops and "corporate" tracks.
+- **⚡ Quick preview:** the AI makes the edit and renders only a fast draft; press **Render final** when you like it.
+- **Learns your assets:** when assets are installed or added, the app indexes them and writes a guide the AI reads.
+- **NVIDIA, AMD and Intel GPUs:** it tests what works on your PC and tells the AI to use it.
+- **Updates itself:** when a new version is on GitHub, **Let Claude update** installs it without touching your work.
 
 Everything runs on your PC. Jobs use your own Claude or ChatGPT subscription.
 
 ## Install (let Claude do it)
 
-You need Windows 10/11 (an NVIDIA GPU helps) and a Claude subscription (for Claude Code) and/or ChatGPT (for Codex).
+You need Windows 10/11 (an NVIDIA, AMD or Intel GPU helps) and a Claude subscription (for Claude Code) and/or ChatGPT (for Codex).
 
 1. **Get the app:** click **Code > Download ZIP** on this page and unzip it anywhere (or `git clone` it).
 2. **Double-click `Setup.bat`.** It installs ffmpeg, Node.js, Claude Code, a portable Python and the HyperFrames video
@@ -33,10 +37,12 @@ You need Windows 10/11 (an NVIDIA GPU helps) and a Claude subscription (for Clau
    > then run `app\python\python.exe app\tools\fetch_mixkit_assets.py` to get the Mixkit music, sound effects and footage.
    > Tell me when it's done.
 
-   The Drive pack (about 0.7 GB) holds the assets that may be shared (3D, fonts, icons, emoji, looks, maps, Open Peeps,
+   The Drive pack is 0.7 GB to download and **1.1 GB unzipped** (46,000 files); the Mixkit items add **2.7 GB**
+   (3,330 files), so plan for about **3.8 GB**. It holds the assets that may be shared (3D, fonts, icons, emoji, looks, maps, Open Peeps,
    Kenney sounds). Mixkit items are fetched from Mixkit itself, because their licence forbids re-sharing them. Details:
    [ASSET-LICENSES.md](ASSET-LICENSES.md).
-4. **Start it:** double-click **Review Room App** on the desktop (or `Start Review Room.vbs`).
+4. **Start it:** double-click **Review Room App** on the desktop (or `Start Review Room.vbs`). The app notices the new
+   assets, learns them (`workspace\ASSETS.md`) and offers to let Claude study them (`workspace\ASSET-NOTES.md`).
 
 ## Use it
 
@@ -49,6 +55,10 @@ The app opens on a start screen: **Make a video** or **Edit a video** (keys M / 
 - Click the picture to drop a pin, or drag to draw a box. Write the change, or press 🎤 Speak.
 - Choose **Claude or Codex**, **Normal or Heavy**, and a **Style**, then press **Send to Claude**. Several notes can go as one
   job with **Send all drafts**.
+- With **⚡ Quick preview: on** (the default) the AI renders a fast draft, `<name> (rev N preview).mp4`, with the same
+  timing, so you can **Compare A/B** quickly and keep sending notes. When it looks right, press **🎬 Render final**: the app
+  renders the full-quality version from the recipe the AI saved, with no extra AI job, and sends the preview to the
+  Recycle Bin. Turn Quick preview off to get a full render after every edit.
 - When the new version is ready, **Compare A/B**, then **Approve** (the old one goes to the Recycle Bin).
 - **✨ Assets & effects** is your bin: drop files from your PC, or open **Default assets**, **Effects** (447 HyperFrames
   effects) and **Looks** like folders. Drag any item onto the picture (a place) or the timeline (a time) and say what to do with it.
@@ -67,13 +77,48 @@ The app opens on a start screen: **Make a video** or **Edit a video** (keys M / 
 **⚙ Settings > Use assets that can't be shared** lets the AI use (or ignore) the library folders whose licences forbid
 re-sharing (Mixkit, Sonniss, Remix Icon): fine in your own videos, kept out when you don't want them.
 
+## Updates
+
+The version is in `VERSION` (shown next to the title). The app checks GitHub every few hours (or **⚙ Settings > Check for
+updates**). When there is a newer version, **⬆ Update** shows what is new; **Let Claude update** starts one AI job that runs
+`app\tools\update.py`:
+
+- it downloads the new version and replaces only the app's own files, after copying each one to `backups\<version>-<time>\`;
+- it never writes your videos, projects, assets, notes or `settings.json` (new settings are only added), and checks that
+  they are unchanged afterwards. If anything fails it rolls back by itself;
+- an app file you edited yourself is kept, and the AI merges the new version (`*.update-new`) into it by hand;
+- a `git clone` without local changes updates with `git pull`.
+
+When it finishes, the app closes; open it again to use the new version. To undo: `app\python\python.exe app\tools\update.py --rollback`.
+
+**Updating from 1.0.0** (it has no update button yet): open Claude Code in the app folder and paste:
+
+> Update this app from https://github.com/khalidalani2002-gif/ai-video-editor to the newest version. Download the repo as a
+> ZIP, copy its files over this folder, but never touch `workspace\videos`, `workspace\projects`, `workspace\assets`,
+> `workspace\review` or `app\python`, and keep my `settings.json` values. Then restart the app.
+
+## GPU: NVIDIA, AMD and Intel
+
+`app\gpu.py` (run by Setup, and by the app at start) tests what this PC can really do and puts it in every job:
+
+| | NVIDIA | AMD | Intel |
+|---|---|---|---|
+| Fast video encoding (ffmpeg) | NVENC `h264_nvenc` | AMF `h264_amf` | Quick Sync `h264_qsv` |
+| Blender Cycles | CUDA (OptiX on RTX) | HIP (Radeon RX 5000 and newer) | oneAPI (Arc) |
+| Speech (whisper.cpp) | CUDA build | fast CPU build (OpenBLAS) | fast CPU build (OpenBLAS) |
+| HyperFrames (Chrome) | GPU | GPU | GPU |
+
+Each encoder is tested by encoding a few frames, and Blender is asked which devices it sees. If a GPU's encoder fails
+(usually an old driver), the app uses the CPU encoder and **⚙ Settings > GPU** shows why, with the vendor's driver page. Install
+or update graphics drivers yourself from NVIDIA, AMD or Intel; the app never installs drivers.
+
 ## Claude or Codex
 
 - **Claude:** Claude Code with `claude-opus-5-5`. Rules for it are in `workspace/CLAUDE.md`.
 - **Codex:** the Codex CLI (the Codex desktop app's bundled one, or `npm i -g @openai/codex` + `codex login`) with
   `gpt-5.6-sol`. It reads `workspace/AGENTS.md`, which points to the same rules.
 
-Change the models in `settings.json`. Each video keeps a separate conversation with each engine.
+Change the models in `settings.json` (your copy; the defaults are in `app\data\settings.default.json`). Each video keeps a separate conversation with each engine.
 
 ## Security
 
@@ -104,9 +149,11 @@ Found a problem? Please open an issue.
 |---|---|
 | `Start Review Room.vbs` | starts the app (a local server on port 8770 plus an app window) |
 | `Setup.bat`, `Claude Login.bat` | set up a PC, sign in to Claude |
-| `settings.json` | ports, models, the "use assets that can't be shared" switch |
+| `VERSION`, `CHANGELOG.md` | the app version and what changed |
+| `settings.json` | your settings: ports, models, the "use assets that can't be shared" switch (made on first start) |
+| `backups\` | app files replaced by updates |
 | `app\` | the program (Python standard library + HTML), styles, looks, tools |
-| `workspace\` | where the AI works: `videos\`, `projects\`, `assets\`, `review\`, `CLAUDE.md`, `AGENTS.md`, `tools\find_asset.py` |
+| `workspace\` | where the AI works: `videos\`, `projects\`, `assets\`, `review\`, `CLAUDE.md`, `AGENTS.md`, `ASSETS.md`, `tools\find_asset.py` |
 
 ## Licence
 
