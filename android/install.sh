@@ -8,6 +8,9 @@
 # Claude Code, Codex and HyperFrames (official Linux builds); the app lives in Debian at /root/ai-video-editor.
 # Then the command  aive  starts it (aive start | stop | login | update | logs | shell | doctor).
 # 2D only on Android: no Blender / 3D.
+# Everything runs inside main(): with "curl | bash" the script itself arrives on stdin, and bash must read all of it
+# before anything below can read stdin (Debian's setup would otherwise swallow the rest of this file).
+main() {
 set -euo pipefail
 REPO="${AIVE_REPO:-https://github.com/khalidalani2002-gif/ai-video-editor}"
 ARGS="$*"
@@ -19,14 +22,14 @@ fi
 
 say "1/5 Termux packages"
 yes | pkg update -y >/dev/null 2>&1 || true
-pkg install -y proot-distro git curl termux-tools procps
+pkg install -y proot-distro git curl termux-tools procps </dev/null
 
 say "2/5 Phone storage (allow the permission prompt)"
 if [ ! -d "$HOME/storage/shared" ]; then termux-setup-storage || true; sleep 4; fi
 mkdir -p "/storage/emulated/0/Movies/AI Video Editor/Finished" 2>/dev/null || true
 
 say "3/5 Debian Linux (about 300 MB; it holds the app and its tools)"
-if ! proot-distro login debian -- true 2>/dev/null; then proot-distro install debian; fi
+if ! proot-distro login debian -- true </dev/null 2>/dev/null; then proot-distro install debian </dev/null; fi
 
 say "4/5 The app and its tools inside Debian (10-20 minutes the first time)"
 proot-distro login debian --shared-tmp -- bash -c "
@@ -36,11 +39,11 @@ proot-distro login debian --shared-tmp -- bash -c "
   if [ -d /root/ai-video-editor/.git ]; then git -C /root/ai-video-editor pull --ff-only || true
   else git clone --depth 1 $REPO /root/ai-video-editor; fi
   bash /root/ai-video-editor/android/setup-debian.sh $ARGS
-"
+" </dev/null
 
 say "5/5 The 'aive' command and a home-screen shortcut"
 SCRIPT_DIR="$PREFIX/share/ai-video-editor"; mkdir -p "$SCRIPT_DIR"
-proot-distro login debian -- cat /root/ai-video-editor/android/aive > "$PREFIX/bin/aive"
+proot-distro login debian -- cat /root/ai-video-editor/android/aive </dev/null > "$PREFIX/bin/aive"
 chmod +x "$PREFIX/bin/aive"
 mkdir -p "$HOME/.shortcuts"
 printf '#!/data/data/com.termux/files/usr/bin/bash\naive start\n' > "$HOME/.shortcuts/AI Video Editor"
@@ -56,3 +59,5 @@ Tips:
   - Put videos in  Movies/AI Video Editor  on the phone; finished videos are copied to its "Finished" folder.
   - Optional: install Termux:Widget to start the editor from a home-screen widget.
 EOT
+}
+main "$@"

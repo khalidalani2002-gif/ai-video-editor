@@ -8,7 +8,7 @@
 #   aive doctor   check the tools
 APP=/root/ai-video-editor
 PORT=8770
-run() { proot-distro login debian --shared-tmp --bind /storage/emulated/0:/sdcard -- bash -lc "$1"; }
+run() { proot-distro login debian --shared-tmp -- bash -lc "$1"; }
 up() { curl -s -m 2 -o /dev/null "http://127.0.0.1:$PORT/api/videos"; }
 
 case "${1:-start}" in
@@ -17,7 +17,7 @@ case "${1:-start}" in
       termux-wake-lock 2>/dev/null || true
       # proot keeps running as long as the server does; nohup + & keeps both alive after this command returns.
       # --shared-tmp: Debian's /tmp is Termux's $PREFIX/tmp, so the log is readable from both sides.
-      nohup proot-distro login debian --shared-tmp --bind /storage/emulated/0:/sdcard --         bash -lc "cd $APP/app && exec python3 server.py" > "$PREFIX/tmp/ai-video-editor.log" 2>&1 &
+      nohup proot-distro login debian --shared-tmp --         bash -lc "cd $APP/app && exec python3 server.py" > "$PREFIX/tmp/ai-video-editor.log" 2>&1 &
       printf "Starting"
       for _ in $(seq 1 60); do sleep 1; printf "."; up && break; done; echo
     fi
@@ -34,9 +34,9 @@ case "${1:-start}" in
   update)
     run "cd $APP && python3 app/tools/update.py --apply && bash android/setup-debian.sh" ;;
   logs) tail -n 80 "$PREFIX/tmp/ai-video-editor.log" ;;
-  shell) proot-distro login debian --shared-tmp --bind /storage/emulated/0:/sdcard -- bash -lc "cd $APP && exec bash -l" ;;
+  shell) proot-distro login debian --shared-tmp -- bash -lc "cd $APP && exec bash -l" ;;
   doctor)
-    run "echo; for c in python3 node ffmpeg chromium claude codex; do printf '%-9s ' \$c; (\$c --version 2>/dev/null | head -1) || echo MISSING; done;
+    run "echo; for c in python3 node ffmpeg chromium claude codex; do printf '%-9s ' \$c; f=--version; [ \$c = ffmpeg ] && f=-version; (\$c \$f 2>/dev/null | head -1) || echo MISSING; done;
          printf 'whisper   '; ls \$HOME/whisper.cpp/build/bin/whisper-cli 2>/dev/null || echo 'not installed (optional: bash $APP/android/setup-debian.sh --speech)';
          python3 $APP/app/tools/learn_assets.py --check; RR_PLATFORM=android python3 $APP/app/gpu.py" ;;
   *) sed -n '2,9p' "$0" ;;

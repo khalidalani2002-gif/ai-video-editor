@@ -1,8 +1,8 @@
 {
 ".gitattributes": "9e51c184534ae969d7c10f22cfa504e86d23b68f19113b212abcb915f9962e89",
 ".gitignore": "fc74e7f48e1b54335560384bb653ff93e7b6650a5a42b09eab35455643a7ed59",
-"android/aive": "4889b5ff48a48b8353f537e4f2b3ced34267ab48bb8975c953d3f75d51ec1195",
-"android/install.sh": "6da8a65f813e2d477515b4bcd2cad8e319cbdeb0f75ea040d50fd3fb032a9344",
+"android/aive": "154687acc92fbc0fda1fbca00d63ff1f7ec42297340a8c0fbd5bfef1e1d593fd",
+"android/install.sh": "a5d90cf57ad6797fd1b24df6d0408abb4ae0af14894a0cf57034c202948390b6",
 "android/login.sh": "54b556cf608c626ec78f3a0f654161d71fe5bdd388588667ab2274fe89ebe8e4",
 "android/README.md": "836562e3b3d9378600331f358590245ccfefa7145587e1d91b13abedc853eb42",
 "android/setup-debian.sh": "faeaaabe4e264207109060d388b3a8515a3f38bab2a3e64f0ec4bb19b21a9c2f",
