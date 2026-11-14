@@ -13,13 +13,15 @@ FILES = ["Start Review Room.vbs", "Setup.bat", "Claude Login.bat", "Codex Login.
          "app/tools/import_default_assets.py", "app/tools/fetch_mixkit_assets.py", "app/tools/make_asset_pack.py",
          "app/tools/codex_path.py", "app/tools/codex_login.ps1", "app/tools/test_codex.py", "app/tools/export_repo.py", "app/tools/style_examples/render_3d.py", "app/tools/style_examples/make_2d.py",
          "workspace/CLAUDE.md", "workspace/AGENTS.md", "workspace/tools/find_asset.py"]
-DIRS = ["app/static", "app/luts", "workspace/.claude/skills/video-use"]
+DIRS = ["app/static", "app/luts", "workspace/.claude/skills/video-use", "android"]
 DATA = ["styles.json", "slop-audio.json", "restricted-assets.json", "mixkit-catalog.json", "hyperframes-registry.json",
         "update-manifest.json", "settings.default.json"]
 GITATTRIBUTES = """* text=auto
 *.bat text eol=crlf
 *.vbs text eol=crlf
 *.ps1 text eol=crlf
+*.sh text eol=lf
+android/aive text eol=lf
 *.jpg binary
 *.png binary
 *.ico binary

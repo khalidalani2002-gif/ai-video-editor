@@ -26,12 +26,13 @@
     <div class="tabs"><button id="tabVideos" class="tab on"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v18H3z M7 3v18 M17 3v18 M3 8h4 M3 16h4 M17 8h4 M17 16h4"/></svg>Videos</button><button id="tabAssets" class="tab"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z"/></svg>Assets</button></div>
     <div id="videosPane" class="pane">
       <input aria-label="Search videos" id="search" type="search" placeholder="Search videos…" autocomplete="off">
+      <label class="ghost pickBtn" title="Choose video files from this device"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>Add videos<input id="vidPick" type="file" accept="video/*" multiple hidden></label>
       <div id="videoList"></div>
     </div>
     <div id="assetsPane" class="pane hidden">
       <div class="aTop"><input aria-label="Search bin" id="aSearch" type="search" placeholder="Filter your bin…" autocomplete="off">
         <button id="aBig" class="ghost" title="Big grid view"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5 M16 3h5v5 M3 16v5h5 M21 16v5h-5"/></svg>Expand</button></div>
-      <div class="aTop"><button id="aAdd" class="ghost"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>Library</button><span class="aHint">or drop files from your PC here (saved in workspace\assets)</span></div>
+      <div class="aTop"><button id="aAdd" class="ghost"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>Library</button><label class="ghost pickBtn" title="Choose files from this device"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>Add files<input id="binPick" type="file" multiple hidden></label><span class="aHint">or drop files here (saved in workspace/assets)</span></div>
       <div id="aCrumbs" class="crumbs hidden"></div>
       <div id="aKinds"></div>
       <div id="aGrid"></div>
@@ -171,6 +172,7 @@
       <div class="muted">Videos, images, music and logos · or start with just a description</div>
       <div id="mkItems"></div>
       <div id="mkCount" class="muted">nothing yet</div>
+      <label class="ghost pickBtn" title="Choose videos, photos, music or logos from this device"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>Choose files<input id="mkPick" type="file" multiple hidden></label>
     </div>
     <label class="fieldLabel" for="mkDesc">DIRECTION <span>Arabic or English</span></label><textarea aria-label="Video direction" id="mkDesc" dir="auto" placeholder="Describe the video you want: the idea, the mood, the text, the length…   صف الفيديو الذي تريده"></textarea>
     <div class="row mkRow">

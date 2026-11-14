@@ -3,7 +3,7 @@
 Scene cuts, measured checks (loudness, black and flash frames), automatic colour correction (per shot),
 colour matching to a reference frame, LUT looks, speech-to-text with word timings, frame images for notes.
 """
-import json, math, os, re, socket, subprocess, tempfile, threading, time, urllib.request, uuid
+import json, math, os, re, shutil, socket, subprocess, tempfile, threading, time, urllib.request, uuid
 from pathlib import Path
 
 NOWIN = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
@@ -143,9 +143,19 @@ def render_filtered(p: Path, vf: str, out: Path, complex_graph=False):
 
 
 # ------------------------------------------------------------------ speech
+# Windows with an NVIDIA GPU runs the large model; phones and other CPU-only Linux setups use the small one.
+DEFAULT_WHISPER = "large-v3-turbo" if os.name == "nt" else os.environ.get("RR_WHISPER_MODEL", "small")
+
+
 def whisper_bin():
-    p = os.environ.get("HYPERFRAMES_WHISPER_PATH") or str(Path(os.environ.get("LOCALAPPDATA", "")) / "whisper.cpp-cuda/Release/whisper-cli.exe")
-    return p if Path(p).exists() else None
+    if os.environ.get("HYPERFRAMES_WHISPER_PATH") and Path(os.environ["HYPERFRAMES_WHISPER_PATH"]).exists():
+        return os.environ["HYPERFRAMES_WHISPER_PATH"]
+    if os.name == "nt":
+        p = Path(os.environ.get("LOCALAPPDATA", "")) / "whisper.cpp-cuda/Release/whisper-cli.exe"
+        return str(p) if p.exists() else None
+    for c in (shutil.which("whisper-cli"), Path.home() / "whisper.cpp/build/bin/whisper-cli"):
+        if c and Path(c).exists(): return str(c)
+    return None
 
 
 def model_path(name):
@@ -153,9 +163,10 @@ def model_path(name):
     return p if p.exists() else None
 
 
-def whisper_words(src: Path, language="auto", model="large-v3-turbo", gpu=True, words=True):
+def whisper_words(src: Path, language="auto", model=None, gpu=True, words=True):
     """[{text, start, end}] (words=True) or plain text; any audio/video input"""
-    exe, mp = whisper_bin(), model_path(model) or model_path("medium") or model_path("small")
+    model = model or DEFAULT_WHISPER
+    exe, mp = whisper_bin(), model_path(model) or model_path("large-v3-turbo") or model_path("medium") or model_path("small")
     if not exe or not mp: raise RuntimeError("whisper.cpp or its model is missing (run tools/setup_windows.ps1)")
     with tempfile.TemporaryDirectory() as tmp:
         wav = Path(tmp) / "a.wav"
@@ -201,7 +212,7 @@ class WhisperDaemon:
 
     def exe(self):
         w = whisper_bin()
-        p = Path(w).with_name("whisper-server.exe") if w else None
+        p = Path(w).with_name("whisper-server.exe" if os.name == "nt" else "whisper-server") if w else None
         return p if p and p.exists() else None
 
     def running(self): return self.proc is not None and self.proc.poll() is None

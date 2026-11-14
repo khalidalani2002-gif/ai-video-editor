@@ -1257,6 +1257,26 @@ async function uploadTo(f, dest) {
   });
 })();
 
+// file pickers (phones have no drag and drop): the same uploads the drop zones do
+$("#vidPick").onchange = async (e) => {
+  const files = [...e.target.files].filter((f) => VIDEO_EXT.test(f.name)); let last = null;
+  for (const f of files) { toast(`copying ${f.name}…`); last = (await uploadTo(f, "videos")).path; }
+  e.target.value = ""; await loadVideos(); if (last) openVideo(last);
+};
+$("#binPick").onchange = async (e) => {
+  for (const f of [...e.target.files]) { toast(`copying ${f.name}…`); await uploadFile(f); }
+  e.target.value = ""; loadBin();
+};
+$("#mkPick").onchange = async (e) => {
+  const items = [];
+  for (const f of [...e.target.files]) { $("#mkCount").textContent = `copying ${f.name}…`; items.push(await uploadTo(f, VIDEO_EXT.test(f.name) ? "videos" : null)); }
+  e.target.value = "";
+  for (const a of items) { const x = a.path && a.path.startsWith("videos/") ? { ...a, kind: "video" } : a; if (!SEL.has(keyOf(x))) toggleSel(x); }
+  S.videos = await api("/api/videos"); renderLibrary(); renderMakeBin();
+};
+// touch screens: no hover or keyboard hints; phones get the stacked layout from app.css
+if (matchMedia("(pointer: coarse)").matches) document.body.classList.add("touch");
+
 // ---------------------------------------------------------------- undo / redo / delete
 const HIST = { undo: [], redo: [] };
 const snapLocal = () => JSON.stringify({ drops: S.drops, pin: S.pin, box: S.box, rin: S.rin, rout: S.rout });

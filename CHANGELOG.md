@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.4.0 (2026-11-14)
+
+- **Android version (2D only):** the editor runs on Android phones inside Termux. One command installs a small Debian
+  Linux (proot-distro, no root) with the official Linux builds of Claude Code, Codex, Node.js 22, ffmpeg and Chromium;
+  `aive start` opens the editor in the phone's browser. See [android/README.md](android/README.md).
+  - `aive start | stop | login | update | logs | doctor | shell`; `aive login` signs in to Claude and/or Codex.
+  - Videos in the phone's Movies/AI Video Editor folder show up as **Phone**; finished videos are copied to its
+    Finished folder. On the phone, "deleted" files go to `workspace/review/trash/`.
+  - No Blender / 3D on Android: 3D styles are hidden and every job is told it is 2D only.
+- **Phone-friendly layout:** below 900 px the editor stacks the picture, the notes and the library; dialogs fill the
+  screen; buttons are bigger for touch.
+- **Add videos / Add files / Choose files** buttons next to every drop zone (phones have no drag and drop).
+- Linux support in general: the server, speech (whisper.cpp, small model on the CPU), GPU check and asset tools run on
+  Linux as well as Windows.
+
 ## 1.3.0 (2026-11-14)
 
 - **New interface**, designed by Codex (GPT-6.1-sol) and checked by Claude: a "cutting room" look with warm charcoal surfaces,

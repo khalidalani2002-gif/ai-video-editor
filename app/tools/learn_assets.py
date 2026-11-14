@@ -131,7 +131,7 @@ def write_guide(items, sizes):
         by_top[p[2] if p[1] == "Default assets" and len(p) > 3 else "(your own files)"].append(i)
     L = ["# The asset library (learned automatically)", "",
          f"Learned {time.strftime('%Y-%m-%d %H:%M')}: **{len(items):,} assets**. Re-learned by the app whenever files are added or removed.",
-         "Search it: `../app/python/python.exe tools/find_asset.py <words> [--kind KIND] [-n 25] [--no-slop]` "
+         f"Search it: `{'../app/python/python.exe' if os.name == 'nt' else 'python3'} tools/find_asset.py <words> [--kind KIND] [-n 25] [--no-slop]` "
          "(KIND: music sfx audio footage image icon emoji lottie font lut 3d map brand effect file).",
          "Use the library before generating, drawing or downloading anything. Copy the files you use into the project's `src/`.",
          ""]

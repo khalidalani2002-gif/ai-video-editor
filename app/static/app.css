@@ -593,3 +593,45 @@ body.bigAssets #assetsPane { top: 78px; left: 12px; right: 356px; bottom: 76px; 
 #libModal { bottom: 78px; }
 @media (max-width: 1400px) { body.bigAssets #assetsPane { right: 328px; } }
 body:has(#studyBar:not(.hidden)) #drawer { bottom: 76px; max-height: calc(100vh - 155px); }
+
+/* ---------------------------------------------------------------- file pickers + phones (Android version) */
+.pickBtn { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 10px; border: 1px solid var(--line, #4b5740);
+  border-radius: 3px; font-size: 12px; margin: 6px 0; }
+.pickBtn:hover { border-color: var(--accent, #e7c482); }
+.pickBtn:focus-within { outline: 2px solid var(--accent, #e7c482); outline-offset: 2px; }
+#mkDrop .pickBtn { margin-top: 10px; }
+body.touch .aHint, body.touch header .hint { display: none; }
+@media (max-width: 900px) {
+  html, body { height: auto; min-height: 100%; overflow: auto; }
+  header { flex-wrap: wrap; height: auto; min-height: 48px; padding: 6px 10px; gap: 6px; row-gap: 4px; }
+  header .hint, .brand small { display: none; }
+  main, main.wideLib { display: flex; flex-direction: column; height: auto; min-height: 0; overflow: visible; }
+  #center { order: 1; min-height: 0; }
+  #stageWrap { height: 52vh; min-height: 260px; }
+  #panel { order: 2; width: auto; max-height: none; border-left: 0; border-top: 1px solid #4b5740; }
+  #library { order: 3; width: auto; max-height: 70vh; border-right: 0; border-top: 1px solid #4b5740; }
+  #transport { flex-wrap: wrap; row-gap: 6px; }
+  #transport > .spacer { display: none; }
+  #timeline, #tlWrap { touch-action: pan-x; }
+  #home, #makePage { position: static; inset: auto; height: auto; overflow: visible; }
+  #makePage { display: flex; flex-direction: column; }
+  #makePage.hidden, #home.hidden { display: none; }
+  .mkMain { padding: 16px 12px; }
+  .mkSide { width: auto; border-left: 0; border-top: 1px solid #4b5740; }
+  .mkRow { flex-wrap: wrap; row-gap: 8px; }
+  .hWrap { padding: 18px 14px; }
+  .homeIntro h1 { font-size: 34px; }
+  .homeMast { padding: 10px 14px; } .homeMast span:last-child { display: none; }
+  .slate { display: none; }
+  .hMenu { grid-template-columns: 1fr !important; display: grid; }
+  .hRow { padding: 16px 0; } body.touch .hRow kbd { display: none; }
+  .hRow.edit { border-left: 0; padding-left: 0; border-top: 1px solid #758063; }
+  #setModal, #drawer, #libModal, #qv { left: 8px !important; right: 8px !important; width: auto !important; max-width: none !important; }
+  #setModal { top: 56px; max-height: calc(100vh - 70px); }
+  #drawer { bottom: 8px; top: auto; max-height: 70vh; }
+  #stylePop { left: 8px !important; right: 8px !important; width: auto !important; max-height: 75vh; overflow: auto; }
+  body.bigAssets #assetsPane { left: 6px; right: 6px; top: 60px; bottom: 6px; }
+  #studyBar { height: auto; flex-wrap: wrap; padding: 8px 12px; }
+  body:has(#studyBar:not(.hidden)) main { height: auto; }
+  button, select, .pickBtn { min-height: 36px; }
+}

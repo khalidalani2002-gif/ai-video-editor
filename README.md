@@ -14,6 +14,7 @@ A Windows desktop app where **Claude Code** or **OpenAI Codex** edit and make vi
 - **⚡ Quick preview:** the AI makes the edit and renders only a fast draft; press **Render final** when you like it.
 - **Learns your assets:** when assets are installed or added, the app indexes them and writes a guide the AI reads.
 - **NVIDIA, AMD and Intel GPUs:** it tests what works on your PC and tells the AI to use it.
+- **Android too:** a 2D version runs on phones in Termux ([android/README.md](android/README.md)).
 - **Updates itself:** when a new version is on GitHub, **Let Claude update** installs it without touching your work.
 
 Everything runs on your PC. Jobs use your own Claude or ChatGPT subscription.
@@ -44,6 +45,11 @@ You need Windows 10/11 (an NVIDIA, AMD or Intel GPU helps) and a Claude subscrip
    [ASSET-LICENSES.md](ASSET-LICENSES.md).
 4. **Start it:** double-click **Review Room App** on the desktop (or `Start Review Room.vbs`). The app notices the new
    assets, learns them (`workspace\ASSETS.md`) and offers to let Claude study them (`workspace\ASSET-NOTES.md`).
+
+## Android (phone) version
+
+The editor also runs on Android phones inside the free Termux app, **2D only** (no Blender / 3D). One command installs
+it; then `aive start` opens it in the phone's browser. Install steps, commands and speeds: [android/README.md](android/README.md).
 
 ## Use it
 

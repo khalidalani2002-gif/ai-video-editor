@@ -97,7 +97,8 @@ class CodexTests(unittest.TestCase):
                          CODEX_MODEL="gpt-6.1-sol", CODEX_FALLBACK_MODEL="gpt-5.6-sol", ENGINE_NAME={"claude": "Claude", "codex": "Codex"},
                          get_note=lambda nid: note, update_note=lambda nid, **kw: note.update(kw), codex_bin=lambda: "codex.exe",
                          engine_info=lambda force=False: {"codex_signed_in": signed_in}, prompt_for=lambda n: "same prompt\nArabic: \u0645\u0631\u062d\u0628\u0627",
-                         load=lambda *a: {"codex:videos/test.mp4": "existing-thread"}, save=Mock(), RUNNING={}, NOWIN=0)
+                         load=lambda *a: {"codex:videos/test.mp4": "existing-thread"}, save=Mock(), RUNNING={}, NOWIN=0,
+                         PLATFORM="windows", PY_REL="../app/python/python.exe", platform_block=lambda: "", export_copy=lambda rel: None)
             commands, prompts = [], []
             def launch(cmd, **kw):
                 commands.append(list(cmd))

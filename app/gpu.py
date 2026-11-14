@@ -44,7 +44,17 @@ def run(cmd, timeout=60):
 
 
 def adapters():
-    """[{name, vendor, driver, vram_gb}] from Windows (virtual/remote display adapters are skipped)"""
+    """[{name, vendor, driver, vram_gb}] from Windows (virtual/remote display adapters are skipped).
+    Linux: from `lspci` when present. Android (Termux/proot): none, the GPU is not reachable from there."""
+    if os.name != "nt":
+        if os.environ.get("RR_PLATFORM") == "android": return []
+        code, out = run(["lspci", "-nn"], 10)
+        res = []
+        for line in out.splitlines() if code == 0 else []:
+            if not any(k in line for k in ("VGA", "3D controller", "Display")): continue
+            ven = next((v for k, v in VENDOR_IDS.items() if f"[{k.lower()}:" in line.lower()), None)
+            if ven: res.append({"name": line.split(": ", 1)[-1][:80], "vendor": ven, "driver": "", "vram_gb": 0})
+        return res
     ps = ("Get-CimInstance Win32_VideoController | Select-Object Name,DriverVersion,PNPDeviceID,AdapterRAM | ConvertTo-Json -Compress")
     code, out = run(["powershell", "-NoProfile", "-Command", ps], 30)
     try: rows = json.loads(out.strip() or "[]")
@@ -129,6 +139,11 @@ def detect(cache=None, blender=None, force=False):
 def summary(g):
     """a few lines for prompts and the Settings panel"""
     if not g: return "GPU: not checked yet."
+    if os.environ.get("RR_PLATFORM") == "android":
+        return ("Android phone: CPU only (the GPU is not reachable from Termux). Encode with libx264: previews "
+                f"`{' '.join(DRAFT_ARGS['libx264'])}`, finals `-preset veryfast -crf 20` (a phone gets hot on long encodes). "
+                "Speech runs on the CPU with the small whisper model. No Blender (2D only). HyperFrames: `--workers 2`, "
+                "software rendering, so keep WebGL effects out.")
     if not g["adapters"]: return "GPU: none found (CPU only). Use libx264 and Blender on the CPU; keep 3D light."
     names = ", ".join(f"{a['name']} (driver {a['driver']})" for a in g["adapters"])
     lines = [f"GPU: {names}."]
@@ -151,7 +166,7 @@ if __name__ == "__main__":
     import shutil
     here = Path(__file__).resolve().parent
     base = Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Blender Foundation"
-    found = sorted(base.glob("*/blender.exe"), reverse=True) if base.exists() else []
-    bl = str(found[0]) if found else shutil.which("blender")
+    found = sorted(base.glob("*/blender.exe"), reverse=True) if os.name == "nt" and base.exists() else []
+    bl = None if os.environ.get("RR_PLATFORM") == "android" else (str(found[0]) if found else shutil.which("blender"))
     g = detect(here.parent / "workspace" / "review" / "gpu.json", bl, force="--force" in sys.argv)
     print(json.dumps(g, indent=1) if "--json" in sys.argv else summary(g))

@@ -54,6 +54,11 @@ SECURITY_HEADERS = {
 for d in ("videos", "projects", "assets"): (ROOT / d).mkdir(parents=True, exist_ok=True)
 VIDEO_EXT = {".mp4", ".mov", ".webm", ".mkv", ".m4v"}
 NOWIN = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+# windows | android (Termux + Debian proot, started by android/start.sh) | linux.  Android = 2D only: no Blender, no 3D styles.
+PLATFORM = "windows" if os.name == "nt" else (os.environ.get("RR_PLATFORM") or ("android" if os.environ.get("ANDROID_ROOT") else "linux"))
+THREE_D = PLATFORM != "android"
+PY_REL = "../app/python/python.exe" if PLATFORM == "windows" else "python3"     # how the AI runs the app's Python tools
+EXPORT_DIR = Path(SETTINGS["export_dir"]).expanduser() if SETTINGS.get("export_dir") else None   # phone: copies of finished videos
 LOCK = threading.RLock()
 JOBS: "queue.Queue[tuple[str, str]]" = queue.Queue()
 RUNNING = {"note": None, "proc": None}
@@ -65,7 +70,7 @@ ALLOWED = ["Read", "Edit", "Write", "Glob", "Grep", "TodoWrite", "Skill", "WebSe
            "Bash(wc:*)", "Bash(du:*)", "Bash(df:*)", "Bash(cp:*)", "Bash(mv:*)", "Bash(mkdir:*)", "Bash(cd:*)", "Bash(echo:*)",
            "Bash(sed:*)", "Bash(sort:*)", "Bash(cmp:*)", "Bash(date:*)", "Bash(sleep:*)", "Bash(nvidia-smi:*)", "Bash(video2x:*)",
            "Bash(yt-dlp:*)", "Bash(*/blender.exe:*)", "Bash(*python.exe:*)", "Bash(*whisper-cli.exe:*)",
-           "Bash(./render.sh:*)", "Bash(./render_all.sh:*)",
+           "Bash(./render.sh:*)", "Bash(./render_all.sh:*)", "Bash(python3:*)", "Bash(node:*)", "Bash(chromium:*)",
            "PowerShell"]
 DENIED = ["Bash(rm -rf /:*)", "Bash(rm -rf ~:*)", "Bash(rm -rf /c:*)", "Bash(git push:*)", "Bash(curl:*)", "Bash(format:*)",
           "Bash(shutdown:*)", "Bash(uv cache clean:*)", "Bash(taskkill:*)", "Bash(ssh:*)", "Bash(scp:*)", "Bash(reg:*)",
@@ -358,14 +363,18 @@ def caps():
             "codex_fallback_model": CODEX_FALLBACK_MODEL,
             "ffmpeg": bool(shutil.which("ffmpeg")), "blender": bool(blender_path()),
             "whisper": bool(AI.whisper_bin() and (AI.model_path("large-v3-turbo") or AI.model_path("small"))),
-            "version": VERSION, "gpu": GPU.summary(GPU_INFO) if GPU_INFO.get("key") else "checking…",
+            "platform": PLATFORM, "three_d": THREE_D, "version": VERSION, "gpu": GPU.summary(GPU_INFO) if GPU_INFO.get("key") else "checking…",
             "gpu_names": [a["name"] for a in GPU_INFO.get("adapters", [])]}
 
 
 def list_videos():
     vids = []
     skip_top = {"review", "assets", "tools"}
-    for dirpath, dirnames, filenames in os.walk(ROOT):
+    seen = set()
+    for dirpath, dirnames, filenames in os.walk(ROOT, followlinks=True):   # videos/Phone may link to the phone's storage
+        real = os.path.realpath(dirpath)
+        if real in seen: dirnames[:] = []; continue
+        seen.add(real)
         top = Path(dirpath) == ROOT
         dirnames[:] = [d for d in dirnames if not d.startswith(".") and d != "node_modules" and not (top and d in skip_top)]
         for fn in filenames:
@@ -424,7 +433,7 @@ def cuts_for(p: Path):
 
 
 TX = {}                                                     # video -> "queued" | "running" | "failed: ..." while transcribing
-WD = AI.WhisperDaemon(port=int(SETTINGS.get("whisper_port", 8771)))                                     # keeps the speech model loaded for spoken notes (stopped when idle)
+WD = AI.WhisperDaemon(port=int(SETTINGS.get("whisper_port", 8771)), model=AI.DEFAULT_WHISPER)                                     # keeps the speech model loaded for spoken notes (stopped when idle)
 
 
 def tx_file(p: Path): return CACHE / f"{vhash(p)}_words.json"
@@ -473,6 +482,7 @@ MODEL = SETTINGS.get("model", "claude-opus-5-5")
 
 
 def blender_path():
+    if not THREE_D: return None
     base = Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Blender Foundation"
     found = sorted(base.glob("*/blender.exe"), reverse=True) if base.exists() else []
     return str(found[0]) if found else shutil.which("blender")
@@ -769,9 +779,32 @@ def recycle(rel):
     """send a workspace file to the Recycle Bin (never a hard delete)"""
     p = safe(rel)
     if not p.exists(): return
+    if PLATFORM != "windows":                                # no Recycle Bin here: a trash folder the user can empty
+        d = DATA / "trash"; d.mkdir(exist_ok=True)
+        shutil.move(str(p), str(d / f"{time.strftime('%Y%m%d-%H%M%S')}-{p.name}")); return
     ps = ("Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile("
           f"'{str(p).replace(chr(39), chr(39) * 2)}', 'OnlyErrorDialogs', 'SendToRecycleBin')")
     subprocess.run(["powershell", "-NoProfile", "-Command", ps], creationflags=NOWIN, timeout=60)
+
+
+def platform_block():
+    if PLATFORM == "windows": return ""
+    where = ("an Android phone (Termux, inside a Debian proot): CPU only, limited RAM and battery" if PLATFORM == "android"
+             else "Linux")
+    return f"""THIS DEVICE: {where}.
+- There is no PowerShell, no Windows path and no Recycle Bin: use bash; Python is `python3`; "send to the Recycle Bin" means
+  move the file into `review/trash/` (create it if needed). Never delete files outright.
+- {"2D ONLY: there is no Blender and no 3D on this device. Pick 2D ways (HyperFrames, ffmpeg) even if a style or level mentions 3D." if not THREE_D else "Blender only if it is installed."}
+- Keep renders light: fewer Chrome workers (`--workers 2`), no WebGL-heavy effects, and Quick preview at 540p when asked.
+  HyperFrames uses the system Chromium (HYPERFRAMES_BROWSER_PATH is set)."""
+
+
+def export_copy(rel):
+    """phone: put a copy of a finished video where the gallery sees it (settings "export_dir")"""
+    if not EXPORT_DIR or not rel: return
+    try:
+        EXPORT_DIR.mkdir(parents=True, exist_ok=True); shutil.copy2(ROOT / rel, EXPORT_DIR / Path(rel).name)
+    except OSError: pass
 
 
 def run_final(nid):
@@ -812,6 +845,7 @@ def run_final(nid):
     RUNNING.update(note=None, proc=None)
     if ok:
         prev = n["result"]; recycle(prev)
+        export_copy(out_rel)
         for x in notes():                                       # every note of a batch points at the same preview
             if x["id"] == nid or (x.get("result") == prev and x.get("preview")):
                 update_note(x["id"], status="created" if x.get("kind") == "create" else "review", result=out_rel, preview=False,
@@ -884,6 +918,8 @@ def run_job(nid, mode):
     elif mode == "approve": prompt = approve_prompt(n)
     elif mode == "batch": prompt = prompt_batch(notes_in)
     else: prompt = prompt_for(n)
+    if PLATFORM != "windows":
+        prompt = prompt.replace("../app/python/python.exe", PY_REL) + "\n\n" + platform_block()
     sessions = load(SESS, {})
     heavy = n.get("level") == "heavy" and mode != "approve"   # normal: medium effort; heavy: high effort
     effort = "high" if heavy else "medium"
@@ -974,14 +1010,14 @@ def run_job(nid, mode):
         is_prev = bool(re.search(r"\((?:rev \d+ )?preview\)\.\w+$", res))
         extra = {"preview": is_prev, "recipe": n["id"] if is_prev else None}
         if mode == "final":
-            recycle(n["result"])
+            recycle(n["result"]); export_copy(res)
             upd(status="created" if n.get("kind") == "create" else "review", result=res, preview=False, summary=final_text.strip()[-1500:])
         elif mode == "create":                                  # later notes on the new video continue this session
             if sid:
                 sessions[vkey(res) if engine == "claude" else "codex:" + vkey(res)] = sid; save(SESS, sessions)
-            upd(status="created", result=res, summary=final_text.strip()[-1500:], **extra)
+            upd(status="created", result=res, summary=final_text.strip()[-1500:], **extra); export_copy(None if is_prev else res)
         elif mode == "approve":
-            upd(status="approved", result=None, final=res, summary=final_text.strip()[-1500:])
+            upd(status="approved", result=None, final=res, summary=final_text.strip()[-1500:]); export_copy(res)
         else:
             upd(status="review", result=res, summary=final_text.strip()[-1500:], **extra)
     else:
@@ -1208,7 +1244,8 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/api/version": return self.send_json(version_info(q.get("refresh") == "1"))
             if u.path == "/api/assets/state": return self.send_json(asset_state())
             if u.path == "/api/gpu": return self.send_json({"summary": GPU.summary(GPU_INFO) if GPU_INFO.get("key") else "checking…", **GPU_INFO})
-            if u.path == "/api/styles": return self.send_json([{k: v for k, v in st.items() if k != "prompt"} for st in STYLES.values()])
+            if u.path == "/api/styles": return self.send_json([{k: v for k, v in st.items() if k != "prompt"} for st in STYLES.values()
+                                                               if THREE_D or st.get("group") != "3D"])
             if u.path == "/api/asset": return self.send_file(safe(q["path"]))
             if u.path == "/api/bin": return self.send_json(bin_items())
             if u.path == "/api/creations":
@@ -1393,7 +1430,9 @@ class H(BaseHTTPRequestHandler):
                 tmp.unlink(missing_ok=True); wav.unlink(missing_ok=True)
             return self.send_json({"text": text})
         if u.path == "/api/open":                                      # reveal a file in Explorer
-            p = safe(b["path"]); subprocess.Popen(["explorer", "/select,", str(p)]); return self.send_json({"ok": True})
+            p = safe(b["path"])
+            if PLATFORM != "windows": return self.send_json({"error": "not available on this device", "path": str(p)}, 400)
+            subprocess.Popen(["explorer", "/select,", str(p)]); return self.send_json({"ok": True})
         if u.path == "/api/quit":
             self.send_json({"ok": True}); threading.Thread(target=lambda: (time.sleep(0.3), os._exit(0))).start(); return
         return self.send_json({"error": "not found"}, 404)
