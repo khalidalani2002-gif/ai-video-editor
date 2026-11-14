@@ -52,10 +52,21 @@ else {
   if (Test-Path $claude) { Write-Host "  installed $(& $claude --version)" } else { Write-Host "  Claude Code did not install; see the messages above." -ForegroundColor Red }
 }
 
+Step "Codex CLI (optional)"
+$CodexInfo = (& $py (Join-Path $App "tools\codex_path.py")) | ConvertFrom-Json
+if ($CodexInfo.path) { Write-Host "  ok Codex $($CodexInfo.version) ($($CodexInfo.path))" }
+else {
+  $InstallCodex = Read-Host "  Also install the Codex CLI (optional, needs Node.js)? [Y/N]"
+  if ($InstallCodex -eq 'Y') {
+    $CodexNpm = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
+    if ($CodexNpm) { & $CodexNpm i -g '@openai/codex@latest'; RefreshPath }
+    else { Write-Host "  npm is missing. Install Node.js, then use Codex Login.bat option [5]." }
+  } else { Write-Host "  skipped (use Codex Login.bat option [5] to add it later)" }
+}
+
 Step "3/7 Video skills for Claude and Codex (HyperFrames)"
 $npx = (Get-Command npx.cmd -ErrorAction SilentlyContinue).Source
-if (-not $npx) { $npx = Join-Path $env:ProgramFiles "nodejs
-px.cmd" }
+if (-not $npx) { $npx = Join-Path $env:ProgramFiles "nodejs\npx.cmd" }
 Push-Location (Join-Path $Root "workspace"); & $npx --yes "hyperframes@$HyperframesVersion" skills update; Pop-Location
 
 Step "4/7 Speech (optional: Speak notes and transcripts)"

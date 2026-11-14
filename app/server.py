@@ -27,6 +27,7 @@ VERSION = (HERE.parent / "VERSION").read_text(encoding="utf-8").strip() if (HERE
 sys.path.insert(0, str(HERE)); sys.path.insert(0, str(HERE / "tools"))
 import gpu as GPU                                           # NVIDIA / AMD / Intel: tested encoders, Blender device, whisper
 import learn_assets as LEARN                                # the asset library index + ASSETS.md guide
+import codex_path as CODEX
 import ai_tools as AI                                       # cuts, colour, checks, speech (ffmpeg + whisper.cpp)
 DATA = ROOT / "review"
 CACHE, FRAMES, LOGS = DATA / "cache", DATA / "frames", DATA / "logs"
@@ -353,7 +354,8 @@ def gpu_block():
 
 def caps():
     """which optional parts are installed on this PC (the UI disables what is missing)"""
-    return {"claude": bool(claude_bin()), "codex": bool(codex_bin()), "codex_model": CODEX_MODEL,
+    return {**engine_info(force=True), "claude_model": MODEL, "codex_model": CODEX_MODEL,
+            "codex_fallback_model": CODEX_FALLBACK_MODEL,
             "ffmpeg": bool(shutil.which("ffmpeg")), "blender": bool(blender_path()),
             "whisper": bool(AI.whisper_bin() and (AI.model_path("large-v3-turbo") or AI.model_path("small"))),
             "version": VERSION, "gpu": GPU.summary(GPU_INFO) if GPU_INFO.get("key") else "checking…",
@@ -820,15 +822,39 @@ def run_final(nid):
 
 
 # ------------------------------------------------------------------ jobs (one at a time: they share the GPU)
+_ENGINE_CACHE = {"at": None}
+_ENGINE_LOCK = threading.Lock()
+
+
+def engine_info(force=False):
+    """Probe binaries and sign-in at most once every ten minutes (force: now), even under concurrent polls."""
+    with _ENGINE_LOCK:
+        now = time.monotonic()
+        if force or _ENGINE_CACHE["at"] is None or now - _ENGINE_CACHE["at"] >= 600:
+            selected = CODEX.discover(SETTINGS)
+            auth = CODEX.status(selected["path"])
+            claude = claude_bin()
+            signed_in = False
+            if claude:
+                try:
+                    r = CODEX.run([claude, "auth", "status"])
+                    signed_in = r.returncode == 0 and json.loads(r.stdout).get("loggedIn") is True
+                except (OSError, ValueError, subprocess.TimeoutExpired): pass
+            _ENGINE_CACHE.update(at=time.monotonic(), codex=bool(selected["path"]),
+                                 codex_path=selected["path"], codex_version=selected["version"],
+                                 codex_signed_in=auth["signed_in"], codex_email=auth["email"],
+                                 codex_plan=auth["plan"], codex_method=auth["method"],
+                                 claude=bool(claude), claude_signed_in=signed_in)
+        return {k: v for k, v in _ENGINE_CACHE.items() if k != "at"}
+
+
 def codex_bin():
-    """the Codex CLI: settings.json "codex_path", the Codex app's bundled codex.exe, or `codex` on PATH"""
-    for c in (SETTINGS.get("codex_path"), str(Path.home() / ".codex" / ".sandbox-bin" / "codex.exe")):
-        if c and Path(c).exists(): return c
-    w = shutil.which("codex")
-    return w if w and not w.lower().endswith((".cmd", ".bat")) else (w or None)
+    """Newest working CLI from settings, the Appx package, sandbox-bin and PATH/npm."""
+    return engine_info()["codex_path"]
 
 
-CODEX_MODEL = SETTINGS.get("codex_model", "gpt-5.6-sol")
+CODEX_MODEL = SETTINGS.get("codex_model", "gpt-6.1-sol")
+CODEX_FALLBACK_MODEL = SETTINGS.get("codex_fallback_model", "gpt-5.6-sol")
 ENGINE_NAME = {"claude": "Claude", "codex": "Codex"}
 
 
@@ -846,6 +872,9 @@ def run_job(nid, mode):
     if not exe:
         upd(status="failed", summary=("Claude Code CLI not found. Install: npm install -g @anthropic-ai/claude-code" if engine == "claude"
                                       else "Codex not found: install the Codex app (or npm i -g @openai/codex) and sign in.")); return
+    if not engine_info().get(engine + "_signed_in") and not engine_info(force=True).get(engine + "_signed_in"):
+        upd(status="failed", summary=f'{ENGINE_NAME[engine]} is not signed in. Run "{ENGINE_NAME[engine]} Login.bat" in the app folder, then send the job again.')
+        return
     upd(status="approving" if mode == "approve" else "running", started=time.time())
     notes_in = [x for x in (get_note(i) for i in group) if x]
     if mode == "create": prompt = prompt_create(n)
@@ -867,12 +896,15 @@ def run_job(nid, mode):
         if mode == "update": cmd += ["--add-dir", str(HERE.parent)]              # the update edits the app folder too
         if resume: cmd += ["--resume", resume]
     else:
-        cmd = [exe, "exec"] + (["resume", resume] if resume else []) + [
-            "--json", "--skip-git-repo-check", "-m", CODEX_MODEL, "-c", f"model_reasoning_effort={effort}", "-o", str(last_file)]
-        if SETTINGS.get("codex_sandbox"):                                           # e.g. "workspace-write"; empty = your Codex config
+        # exec-only options must precede the resume subcommand on current CLIs.
+        cmd = [exe, "exec"]
+        if SETTINGS.get("codex_sandbox"):
             cmd += ["-s", SETTINGS["codex_sandbox"], "-c", "sandbox_workspace_write.network_access=true"]
         if not resume: cmd += ["-C", str(ROOT)]
         if mode == "update": cmd += ["--add-dir", str(HERE.parent)]
+        if resume: cmd += ["resume", resume]
+        cmd += ["--json", "--skip-git-repo-check", "-m", CODEX_MODEL,
+                "-c", f"model_reasoning_effort={effort}", "-o", str(last_file)]
         for x in notes_in if mode in ("edit", "batch") else []:                     # Codex sees the pinned frames directly
             f = FRAMES / f"{x['id']}.png"
             if f.exists(): cmd += ["-i", str(f)]
@@ -882,23 +914,42 @@ def run_job(nid, mode):
     env = dict(os.environ, PYTHONUTF8="1")
     with open(LOGS / f"{nid}.jsonl", "a", encoding="utf-8") as lf:
         lf.write(json.dumps({"type": "review", "event": "start", "mode": mode, "engine": engine, "time": time.time()}) + "\n")
-        p = subprocess.Popen(cmd, cwd=str(ROOT), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                             encoding="utf-8", errors="replace", env=env, creationflags=NOWIN)
-        p.stdin.write(prompt); p.stdin.close()                 # prompt via stdin: safe for newlines, quotes and Arabic
-        RUNNING.update(note=nid, proc=p)
-        final_text = ""
-        for line in p.stdout:
-            lf.write(line); lf.flush()
-            try: ev = json.loads(line)
-            except Exception: continue
-            new_sid = ev.get("session_id") or (ev.get("thread_id") if ev.get("type") == "thread.started" else None)
-            if new_sid:
-                sid = new_sid
-                if skey: sessions[skey] = sid; save(SESS, sessions)
-            if ev.get("type") == "result": final_text = ev.get("result") or ""
-            if ev.get("type") == "item.completed" and (ev.get("item") or {}).get("type") == "agent_message":
-                final_text = ev["item"].get("text") or final_text
-        p.wait()
+        for attempt in range(2):
+            p = subprocess.Popen(cmd, cwd=str(ROOT), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                                 encoding="utf-8", errors="replace", env=env, creationflags=NOWIN)
+            p.stdin.write(prompt); p.stdin.close()                 # prompt via stdin: safe for newlines, quotes and Arabic
+            RUNNING.update(note=nid, proc=p)
+            final_text = ""
+            rejected = False
+            failure_text = ""
+            for line in p.stdout:
+                lf.write(line); lf.flush()
+                try: ev = json.loads(line)
+                except Exception: continue
+                if engine == "codex" and ev.get("type") == "turn.completed":
+                    failure_text = ""
+                    rejected = False
+                if engine == "codex" and ev.get("type") in ("turn.failed", "error"):
+                    rejected = rejected or CODEX.model_rejected(ev)
+                    error = ev.get("error") or ev.get("message") or "Codex request failed"
+                    failure_text = error.get("message", str(error)) if isinstance(error, dict) else str(error)
+                new_sid = ev.get("session_id") or (ev.get("thread_id") if ev.get("type") == "thread.started" else None)
+                if new_sid:
+                    sid = new_sid
+                    if skey: sessions[skey] = sid; save(SESS, sessions)
+                if ev.get("type") == "result": final_text = ev.get("result") or ""
+                if ev.get("type") == "item.completed" and (ev.get("item") or {}).get("type") == "agent_message":
+                    final_text = ev["item"].get("text") or final_text
+            p.wait()
+            if not final_text and failure_text: final_text = failure_text
+            cancelled = (get_note(nid) or {}).get("status") == "cancelled"
+            if engine != "codex" or not rejected or attempt or cancelled or not CODEX_FALLBACK_MODEL or CODEX_FALLBACK_MODEL == CODEX_MODEL:
+                break
+            lf.write(json.dumps({"type": "review", "event": "info", "text":
+                                f"Model {CODEX_MODEL} is not supported; retrying once with {CODEX_FALLBACK_MODEL}."}) + "\n")
+            lf.flush()
+            cmd[cmd.index("-m") + 1] = CODEX_FALLBACK_MODEL
+            last_file.unlink(missing_ok=True)
     if engine == "codex" and last_file.exists():
         final_text = last_file.read_text(encoding="utf-8", errors="replace") or final_text
     RUNNING.update(note=None, proc=None)
@@ -934,7 +985,7 @@ def run_job(nid, mode):
         else:
             upd(status="review", result=res, summary=final_text.strip()[-1500:], **extra)
     else:
-        upd(status="failed" if p.returncode else "done", summary=(final_text or "No result. See the log.").strip()[-1500:])
+        upd(status="failed" if p.returncode or (engine == "codex" and failure_text) else "done", summary=(final_text or "No result. See the log.").strip()[-1500:])
 
 
 def LEARN_vt(v):
@@ -1173,7 +1224,7 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/api/notes":
                 ns = notes()
                 if q.get("path"): ns = [n for n in ns if n["video"] == q["path"]]
-                return self.send_json({"notes": ns, "running": RUNNING["note"], "queued": JOBS.qsize(), "claude": bool(claude_bin())})
+                return self.send_json({"notes": ns, "running": RUNNING["note"], "queued": JOBS.qsize(), **engine_info()})
             if u.path in ("/api/frame", "/api/log") and not SAFE_ID.fullmatch(q.get("id", "")):
                 return self.send_json({"error": "bad id"}, 400)
             if u.path == "/api/frame": return self.send_file(FRAMES / f"{q['id']}.png")

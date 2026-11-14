@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0 (2026-11-14)
+
+- **Claude, Codex or both:** `Codex Login.bat` signs in with ChatGPT or a hidden API key, tests the connection,
+  signs out and offers CLI updates. Setup offers Codex and opens both sign-in menus (Enter or 0 skips each).
+- **Newest Codex CLI:** the app compares installed versions from your settings, the Codex desktop app, sandbox-bin
+  and PATH / npm, and uses the newest. It checks again every ten minutes.
+- Codex now uses `gpt-6.1-sol` by default, with one retry on `gpt-5.6-sol` if the model is not supported. Normal edits
+  still use medium effort; heavy edits use high effort. Current Codex conversation resumes keep sandbox options.
+- The header and Settings show both engines' sign-in state, models and the Codex account and CLI version. Each engine
+  stays selectable; a job sent without signing in explains which login tool to run.
+
 ## 1.1.0 (2026-11-14)
 
 - **Updates:** the app checks GitHub for a new version. **Let Claude update** has Claude (or Codex) run the safe updater:

@@ -1,7 +1,7 @@
 {
   "repo": "khalidalani2002-gif/ai-video-editor",
   "branch": "main",
-  "app_owned": ["app/", "Setup.bat", "Claude Login.bat", "Start Review Room.vbs", "README.md", "ASSET-LICENSES.md", "LICENSE",
+  "app_owned": ["app/", "Setup.bat", "Claude Login.bat", "Codex Login.bat", "Start Review Room.vbs", "README.md", "ASSET-LICENSES.md", "LICENSE",
                 "VERSION", "CHANGELOG.md", ".gitignore", ".gitattributes", "workspace/CLAUDE.md", "workspace/AGENTS.md",
                 "workspace/tools/", "workspace/.claude/skills/video-use/"],
   "user_owned": ["settings.json", "workspace/videos/", "workspace/projects/", "workspace/assets/", "workspace/review/",

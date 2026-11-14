@@ -1,5 +1,5 @@
 @echo off
-:: Review Room: set up this PC (ffmpeg, Node.js, Claude Code, optional speech, desktop shortcut), then sign in to Claude.
+:: Review Room: set up this PC (ffmpeg, Node.js, Claude Code, optional speech, desktop shortcut), then sign in to Claude and Codex.
 setlocal EnableExtensions
 title Review Room setup
 cd /d "%~dp0"
@@ -19,6 +19,6 @@ if /i "%BL%"=="Y" set "ARGS=%ARGS% -Blender"
 if /i "%MK%"=="Y" set "ARGS=%ARGS% -Mixkit"
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0app\setup.ps1" %ARGS%
 echo.
-echo   Next: sign in to Claude.
-pause
+echo   Next: connect Claude, Codex or both. Each menu can be skipped with Enter or 0.
 call "%~dp0Claude Login.bat"
+call "%~dp0Codex Login.bat"

@@ -12,7 +12,21 @@ window.fetch = (u, opt = {}) => {
   });
 };
 const api = (u, opt) => fetch(u, opt).then((r) => r.json());
-const post = (u, body) => api(u, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+const post = async (u, body) => {
+  const isJob = ["/api/create", "/api/batch", "/api/update", "/api/assets/study"].includes(u)
+    || (u === "/api/notes" && body?.send);
+  if (isJob) {
+    Object.assign(CAPS, await api("/api/caps", { method: "POST" }));
+    const engine = body?.engine || ENGINE;
+    if (CAPS[engine + "_signed_in"] === false) {
+      const name = engine === "codex" ? "Codex" : "Claude";
+      const error = `${name} is not signed in. Run "${name} Login.bat" in the app folder, then send it again.`;
+      toast(error);
+      return { error };
+    }
+  }
+  return api(u, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+};
 const enc = encodeURIComponent;
 
 const S = { drops: [], videos: [], path: null, info: null, pin: null, box: null, rin: null, rout: null, zoom: 1,
@@ -417,6 +431,7 @@ async function saveNote(send) {
     x: S.pin ? S.pin[0] : null, y: S.pin ? S.pin[1] : null, box: S.box,
     rin: S.rin != null ? Math.min(S.rin, S.rout) : null, rout: S.rout != null ? Math.max(S.rin, S.rout) : null };
   const n = await post("/api/notes", body);
+  if (n.error) return;
   $("#noteText").value = ""; S.drops = []; renderDrops(); clearSpot();
   await loadNotes();
   if (send) openLog(n.id);
@@ -428,10 +443,7 @@ async function loadNotes() {
   if (!S.path) return;
   const j = await api(`/api/notes?path=${enc(S.path)}`);
   S.notes = j.notes.sort((a, b) => a.t - b.t); S.running = j.running;
-  const cs = $("#claudeState");
-  if (!j.claude) { cs.textContent = "Claude CLI missing"; cs.className = "pill bad"; }
-  else if (j.running) { cs.textContent = `Claude working${j.queued ? ` · ${j.queued} queued` : ""}`; cs.className = "pill busy"; }
-  else { cs.textContent = "Claude ready"; cs.className = "pill ok"; }
+  updateEngineState(j, Boolean(j.running));
   $("#queueInfo").textContent = S.notes.length ? `(${S.notes.length})` : "";
   const drafts = S.notes.filter((n) => n.status === "draft" && !n.kind).length;
   $("#sendAll").classList.toggle("hidden", drafts < 2); $("#sendAll").textContent = `Send all ${drafts} drafts ➜`;
@@ -878,6 +890,7 @@ $("#mkGo").onclick = async () => {
   const text = $("#mkText").value.trim();
   if (!confirm(`${ENGINE_LABEL()} will make a NEW video from ${SEL.size} selected item${SEL.size > 1 ? "s" : ""}${text ? "" : " and decide everything itself (no instructions given)"}. It runs in the background; nothing existing is changed. Start?`)) return;
   const n = await post("/api/create", { items: [...SEL.values()], text, fmt: $("#mkFmt").value, level: $("#mkLevel").value, style: STYLE.tray, engine: ENGINE, noslop: NOSLOP, draft: DRAFT });
+  if (n.error) return;
   $("#mkText").value = ""; SEL.clear(); renderSel(); openLog(n.id); loadCreations();
 };
 
@@ -1081,13 +1094,11 @@ async function renderHome() {
   const [vids, bin, all] = await Promise.all([api("/api/videos"), api("/api/bin"), api("/api/notes")]);
   S.videos = vids;
   const busy = all.running ? 1 + (all.queued || 0) : 0;
-  const cs = $("#claudeState");
-  cs.textContent = !all.claude ? "Claude CLI missing" : busy ? "Claude working" : "Claude ready";
-  cs.className = "pill " + (!all.claude ? "bad" : busy ? "busy" : "ok");
+  updateEngineState(all, Boolean(busy));
   const st = $("#hStatus"); st.innerHTML = "";
   const part = (txt, cls) => { const b = document.createElement("b"); b.textContent = txt; if (cls) b.className = cls; return b; };
   st.append(part(vids.length), ` video${vids.length === 1 ? "" : "s"}  ·  `, part(bin.length), ` in your bin  ·  `,
-    !all.claude ? part("Claude Code is not installed: run Setup.bat") : busy ? part(`Claude is working (${busy} job${busy > 1 ? "s" : ""})`, "on") : "Claude is ready");
+    busy ? part(`AI working (${busy} job${busy > 1 ? "s" : ""})`, "on") : "Choose Claude or Codex to make or edit a video");
   const box = $("#hRecent"); box.innerHTML = "";
   const recent = [...vids].sort((a, b) => b.mtime - a.mtime).slice(0, 8);
   if (!recent.length) { box.innerHTML = '<p class="hNone">No videos yet. Make one, or drop video files into the editor.</p>'; return; }
@@ -1156,6 +1167,7 @@ $("#mkGo2").onclick = async () => {
   const what = SEL.size ? `from ${SEL.size} item${SEL.size > 1 ? "s" : ""}` : "from your description only (an animation or a 3D video)";
   if (!confirm(`${ENGINE_LABEL()} will make a NEW video ${what}, as a ${level} edit${text ? "" : ", deciding everything itself"}. It runs in the background. Start?`)) return;
   const n = await post("/api/create", { items: [...SEL.values()], text, fmt: $("#mkFmt2").value, level, style: STYLE.make, engine: ENGINE, noslop: NOSLOP, draft: DRAFT });
+  if (n.error) return;
   $("#mkDesc").value = ""; SEL.clear(); renderSel(); openLog(n.id); loadCreations();
 };
 $("#mkMic").onclick = () => dictate($("#mkMic"), $("#mkDesc"));
@@ -1478,10 +1490,8 @@ function setEngine(v) {
 for (const id of ENGINE_SELS) $(id).onchange = () => setEngine($(id).value);
 post("/api/caps").then((c) => {
   Object.assign(CAPS, c);
-  if (!c.codex) for (const id of ENGINE_SELS) {
-    const o = $(id).querySelector('option[value="codex"]'); o.disabled = true; o.textContent = "Codex (not installed)";
-  }
-  setEngine(c.codex ? ENGINE : "claude");
+  updateEngineState(c);
+  setEngine(ENGINE);
 });
 
 
@@ -1502,7 +1512,10 @@ setNoSlop(NOSLOP);
 
 // ---------------------------------------------------------------- Settings
 async function openSettings() {
-  const j = await api("/api/settings");
+  const [j, c] = await Promise.all([api("/api/settings"), post("/api/caps")]);
+  Object.assign(CAPS, c); updateEngineState(c);
+  $("#setClaude").textContent = `Claude: ${c.claude_signed_in ? "signed in" : "not signed in"} · ${c.claude_model}`;
+  $("#setCodex").textContent = `Codex: ${c.codex_signed_in ? "signed in" : "not signed in"}${c.codex_method ? " (" + c.codex_method + ")" : ""}${c.codex_email ? " · " + c.codex_email : ""} · CLI ${c.codex_version || "not installed"} · ${c.codex_model}`;
   $("#setRestricted").checked = j.use_restricted_assets;
   const ul = $("#setList"); ul.innerHTML = "";
   for (const [dir, why] of Object.entries(j.restricted)) {
@@ -1592,6 +1605,7 @@ async function refreshAssetsInfo() {
 }
 async function startStudy() {
   const j = await post("/api/assets/study", { engine: ENGINE });
+  if (j.error) return;
   $("#studyBar").classList.add("hidden"); openLog(j.id); toast(`${ENGINE_LABEL()} is studying the library (writes ASSET-NOTES.md)`);
 }
 $("#studyGo").onclick = startStudy; $("#setStudy").onclick = startStudy;
@@ -1602,3 +1616,19 @@ $("#setBtn").addEventListener("click", () => { refreshAssetsInfo(); refreshGpu()
 setTimeout(refreshAssetsInfo, 5000);
 
 loadVideos();
+
+// Both engines stay selectable; sign-in errors explain how to connect them.
+function updateEngineState(info, busy = false) {
+  Object.assign(CAPS, info);
+  const pill = $("#claudeState");
+  pill.textContent = `Claude ${CAPS.claude_signed_in ? "\u2713" : "\u2717"} \u00b7 Codex ${CAPS.codex_signed_in ? "\u2713" : "\u2717"}${busy ? " \u00b7 working" : ""}`;
+  pill.className = "pill " + (busy ? "busy" : CAPS.claude_signed_in || CAPS.codex_signed_in ? "ok" : "bad");
+  for (const id of ENGINE_SELS) for (const option of $(id).options) {
+    const name = option.value === "codex" ? "Codex" : "Claude";
+    option.disabled = false;
+    option.textContent = name + (CAPS[option.value + "_signed_in"] ? "" : " (not signed in)");
+  }
+}
+setInterval(() => {
+  if (!document.hidden) post("/api/caps").then((c) => updateEngineState(c, Boolean(S.running))).catch(() => {});
+}, 30000);

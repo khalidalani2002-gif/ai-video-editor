@@ -25,7 +25,8 @@ You need Windows 10/11 (an NVIDIA, AMD or Intel GPU helps) and a Claude subscrip
 1. **Get the app:** click **Code > Download ZIP** on this page and unzip it anywhere (or `git clone` it).
 2. **Double-click `Setup.bat`.** It installs ffmpeg, Node.js, Claude Code, a portable Python and the HyperFrames video
    skills, and asks about three optional extras: speech (Speak notes and transcripts, 1.7 GB), Blender (3D, 400 MB) and
-   the Mixkit music / sound effects / footage (2.6 GB). Then it opens **`Claude Login.bat`** to sign in to Claude.
+   the Mixkit music / sound effects / footage (2.6 GB). Setup also offers the Codex CLI if it is missing, then opens **`Claude Login.bat`** and **`Codex Login.bat`**.
+   Connect Claude, Codex or both; press Enter or 0 to skip either menu.
    (No browser on that PC? Run `claude setup-token` on any computer, then paste the token in option 1.)
 3. **Install the asset library.** Open Claude Code in the app folder (type `claude` in a terminal there, or pick the
    folder in the Claude desktop app's Code tab) and paste this:
@@ -115,10 +116,16 @@ or update graphics drivers yourself from NVIDIA, AMD or Intel; the app never ins
 ## Claude or Codex
 
 - **Claude:** Claude Code with `claude-opus-5-5`. Rules for it are in `workspace/CLAUDE.md`.
-- **Codex:** the Codex CLI (the Codex desktop app's bundled one, or `npm i -g @openai/codex` + `codex login`) with
-  `gpt-5.6-sol`. It reads `workspace/AGENTS.md`, which points to the same rules.
+- **Codex:** open `Codex Login.bat` to sign in with ChatGPT or an API key, test the connection, or install / update the CLI.
+  The app uses the newest installed CLI (your `codex_path`, the Codex desktop app, sandbox-bin or PATH / npm), checked
+  every ten minutes. It uses `gpt-6.1-sol`, with one retry on `gpt-5.6-sol` if the model is not supported.
+  It reads `workspace/AGENTS.md`, which points to the same rules.
 
-Change the models in `settings.json` (your copy; the defaults are in `app\data\settings.default.json`). Each video keeps a separate conversation with each engine.
+The header and **⚙ Settings > AI engines** show which engines are signed in, their models, and the Codex account and
+CLI version. Connect either engine or both and pick one for each job. The app notices a new sign-in when it opens
+or when you send a job. Normal edits use medium effort; heavy edits use high effort.
+
+Change the models (`model`, `codex_model`, `codex_fallback_model`) in `settings.json` (your copy; the defaults are in `app\data\settings.default.json`). Each video keeps a separate conversation with each engine.
 
 ## Security
 
@@ -148,7 +155,7 @@ Found a problem? Please open an issue.
 | | |
 |---|---|
 | `Start Review Room.vbs` | starts the app (a local server on port 8770 plus an app window) |
-| `Setup.bat`, `Claude Login.bat` | set up a PC, sign in to Claude |
+| `Setup.bat`, `Claude Login.bat`, `Codex Login.bat` | set up a PC, sign in to Claude and / or Codex |
 | `VERSION`, `CHANGELOG.md` | the app version and what changed |
 | `settings.json` | your settings: ports, models, the "use assets that can't be shared" switch (made on first start) |
 | `backups\` | app files replaced by updates |
