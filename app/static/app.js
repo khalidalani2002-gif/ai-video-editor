@@ -458,12 +458,12 @@ function renderNotes() {
   if (!S.notes.length) { box.innerHTML = '<div class="muted">No notes yet. Pause on a moment, click the spot, write the edit.</div>'; return; }
   S.notes.forEach((n, i) => {
     const el = document.createElement("div"); el.className = "note" + (n.by === "claude" ? " ai" : "");
-    const KIND = { check: "🔍 AI check", color: "🎨 colour", look: "🎨 look" };
-    const chips = (n.by === "claude" ? '<span class="chip ai">🤖 found by AI check</span>' : "")
+    const KIND = { check: "AI check", color: "◐ colour", look: "◐ look" };
+    const chips = (n.by === "claude" ? '<span class="chip ai">Found by AI check</span>' : "")
       + (n.severity ? `<span class="chip sev-${n.severity}">${n.severity}</span>` : "")
       + (KIND[n.kind] ? `<span class="chip ai">${KIND[n.kind]}</span>` : "")
       + (n.engine === "codex" ? '<span class="chip eng">Codex</span>' : "")
-      + (n.preview ? '<span class="chip prev">⚡ preview</span>' : n.draft && !n.result ? '<span class="chip prev">⚡ quick preview</span>' : "")
+      + (n.preview ? '<span class="chip prev">preview</span>' : n.draft && !n.result ? '<span class="chip prev">quick preview</span>' : "")
       + (n.batch_ids && n.batch_ids.length > 1 ? `<span class="chip batch">batch of ${n.batch_ids.length}</span>` : "");
     el.innerHTML = `<div class="top"><span class="num">${i + 1}</span><span class="chip when">${tc(n.t)}</span>
       <span class="st ${n.status}">${LABEL[n.status] || n.status}</span><div class="spacer"></div></div>
@@ -471,7 +471,7 @@ function renderNotes() {
       <img class="thumb" src="/api/frame?id=${n.id}" alt=""><div class="txt" dir="auto"></div>
       ${n.assets && n.assets.length ? '<div class="assets"></div>' : ""}
       ${n.summary ? '<div class="sum" dir="auto"></div>' : ""}<div class="acts"></div>`;
-    if (n.assets && n.assets.length) el.querySelector(".assets").textContent = "📎 " + n.assets.map((a, k) => `${k + 1}. ${a.name || a.block}`).join("   ");
+    if (n.assets && n.assets.length) el.querySelector(".assets").textContent = "＋ " + n.assets.map((a, k) => `${k + 1}. ${a.name || a.block}`).join("   ");
     el.querySelector(".txt").textContent = n.text;
     if (n.summary) el.querySelector(".sum").textContent = n.summary;
     el.querySelector(".when").onclick = () => { video.pause(); seek(n.t); };
@@ -485,7 +485,7 @@ function renderNotes() {
     if (n.status === "review" && n.result && n.preview) {
       b(S.compare === n.result && S.showingB ? "Show original (A)" : "Compare A/B", () => toggleCompare(n.result));
       b("Open preview", () => openVideo(n.result, true));
-      b("🎬 Render final", () => post(`/api/notes/${n.id}/final`).then(() => { openLog(n.id); loadNotes(); toast("Rendering the full-quality version…"); }), "primary");
+      b("Render final", () => post(`/api/notes/${n.id}/final`).then(() => { openLog(n.id); loadNotes(); toast("Rendering the full-quality version…"); }), "primary");
     } else if (n.status === "review" && n.result) {
       b(S.compare === n.result && S.showingB ? "Show original (A)" : "Compare A/B", () => toggleCompare(n.result));
       b("Open new version", () => openVideo(n.result, true));
@@ -594,23 +594,23 @@ $("#safeSel").onchange = () => { drawSafe(); $("#safeSel").blur(); };
 
 // ---------------------------------------------------------------- one-click AI actions (fill the note; adjust; send)
 const ACTIONS = [
-  ["🐢 Slow motion", "RIFE frame interpolation on the range",
+  ["Slow motion", "RIFE frame interpolation on the range",
     "Make the marked range (or this shot) smooth slow motion at 50% speed using RIFE frame interpolation (video2x). Keep the music continuous and in sync, and never slow down a voice."],
-  ["🔍 Upscale to 4K", "Real-ESRGAN, whole video",
+  ["Upscale to 4K", "Real-ESRGAN, whole video",
     "Upscale this video to 4K (2160 px on the long side) with Real-ESRGAN (video2x). Keep everything else identical."],
-  ["🫥 Blur / hide (box)", "follows the object if it moves",
+  ["Blur / hide (box)", "follows the object if it moves",
     "Blur and hide what is inside the box for the marked range (or the whole shot). If it moves (a face, a plate, a logo), track it so the blur follows it."],
-  ["✂️ Remove background (pin)", "Robust Video Matting cut-out",
+  ["Remove background (pin)", "Robust Video Matting cut-out",
     "Cut out the subject at the pin for this shot with Robust Video Matting and replace the background with: "],
-  ["🎯 Stabilize", "ffmpeg vidstab, smallest crop",
+  ["Stabilize", "ffmpeg vidstab, smallest crop",
     "Stabilize the shaky footage in the marked range (or this shot) with ffmpeg vidstab (two passes), using the smallest crop/zoom needed."],
-  ["🔇 Remove silences", "cuts only inside measured silence",
+  ["Remove silences", "cuts only inside measured silence",
     "Remove dead air and long pauses from the voice in the marked range (or the whole video). Cut only inside measured silence (ffmpeg silencedetect / word timings), never inside a word, keep pauses natural (about 0.25–0.35 s) and the music smooth across the cuts."],
-  ["💬 Arabic captions", "word-timed, phone-safe",
+  ["Arabic captions", "word-timed, phone-safe",
     "Add Arabic captions in the spoken dialect (spell چ/گ as spoken), word-timed to the voice (whisper --language ar), in the house caption style, readable on a phone and outside the Instagram/TikTok UI zones."],
-  ["🎧 Clean the voice", "noise, hum, clicks, -14 LUFS",
+  ["Clean the voice", "noise, hum, clicks, -14 LUFS",
     "Clean the voice: remove background noise and hum, de-click, keep it natural, then normalise the mix to -14 LUFS with true peak at or below -1 dBTP."],
-  ["🌫️ Reduce video noise", "denoise without smearing",
+  ["Reduce video noise", "denoise without smearing",
     "Reduce video noise/grain in the marked range (or this shot) without smearing detail (ffmpeg nlmeans or hqdn3d), keeping it sharp."],
 ];
 (function buildActions() {
@@ -692,8 +692,8 @@ const KINDS = [["", "All"], ["brand", "Brands"], ["effect", "Effects"], ["emoji"
   ["footage", "Footage"], ["music", "Music"], ["sfx", "SFX"], ["audio", "Audio"], ["lut", "Looks"], ["font", "Fonts"], ["3d", "3D"], ["file", "Other"]];
 const VISUAL = new Set(["brand", "emoji", "icon", "image", "footage"]);
 const AUDIO = new Set(["music", "sfx", "audio"]);
-const ICON = { music: "🎵", sfx: "🔊", audio: "🎵", effect: "✨", lut: "🎨", font: "🔤", "3d": "🧊", lottie: "🎞️", file: "📄",
-  brand: "🏷️", emoji: "😀", icon: "◆", image: "🖼️", footage: "🎬", video: "🎬" };
+const ICON = { music: "♫", sfx: "≋", audio: "♫", effect: "◇", lut: "◐", font: "Aa", "3d": "⬡", lottie: "▤", file: "▤",
+  brand: "◇", emoji: "☺", icon: "◆", image: "▧", footage: "▣", video: "▣" };
 const keyOf = (a) => (a.kind === "video" ? "video:" + a.path : a.path || "hf:" + a.block);
 let BIN = [], binKind = "", libKind = "", libTimer = null, fontN = 0;
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -767,17 +767,17 @@ function assetTile(a, where) {
   el.dataset.key = keyOf(a);
   el.innerHTML = '<div class="th"></div><div class="nm"></div><div class="sb"></div><span class="ck" title="Select for Make a video (or Ctrl+click)"></span>';
   const th = el.querySelector(".th"), src = thumbOf(a);
-  if (src) { const im = new Image(); im.loading = "lazy"; im.draggable = false; im.src = src; im.onerror = () => { th.textContent = ICON[a.kind] || "📄"; }; th.appendChild(im); }
-  else if (a.kind === "effect") { th.innerHTML = '<div class="fx">✨<br><span></span></div>'; th.querySelector("span").textContent = a.sub || "effect"; }
+  if (src) { const im = new Image(); im.loading = "lazy"; im.draggable = false; im.src = src; im.onerror = () => { th.textContent = ICON[a.kind] || "▤"; }; th.appendChild(im); }
+  else if (a.kind === "effect") { th.innerHTML = '<div class="fx">◇<br><span></span></div>'; th.querySelector("span").textContent = a.sub || "effect"; }
   else if (a.kind === "font") th.innerHTML = `<span class="fs" style="font-family:${fontFam(a)}">أبجد Abc</span>`;
   else if (a.kind === "lut" && S.path) {
     const im = new Image(); im.loading = "lazy"; im.draggable = false;
     im.src = `/api/lookpreview?path=${enc(S.path)}&t=${video.currentTime.toFixed(3)}&lut=${enc(a.lut || a.name)}&h=160`; th.appendChild(im);
-  } else th.textContent = ICON[a.kind] || "📄";
+  } else th.textContent = ICON[a.kind] || "▤";
   el.querySelector(".nm").textContent = a.name;
   el.querySelector(".sb").textContent = [a.sub, a.dur ? `${Math.round(a.dur)} s` : ""].filter(Boolean).join(" · ") || a.kind;
   if (AUDIO.has(a.kind) && a.path) { const b = document.createElement("span"); b.className = "play"; b.textContent = "▶"; el.appendChild(b); }
-  if (a.restricted) { const l = document.createElement("span"); l.className = "lock"; l.textContent = "🔒"; l.title = "Free to use in your videos, but this file can't be shared"; el.appendChild(l); }
+  if (a.restricted) { const l = document.createElement("span"); l.className = "lock"; l.textContent = "Restricted"; l.title = "Free to use in your videos, but this file can't be shared"; el.appendChild(l); }
   if (where === "bin") {
     const x = document.createElement("span"); x.className = "rmv"; x.textContent = "✕"; x.title = "Remove from your bin";
     x.onclick = (e) => { e.stopPropagation(); removeFromBin(a); };
@@ -851,7 +851,7 @@ function openQv(a, el) {
     });
     body.appendChild(big("div", { className: "qhint", textContent: "click the tile to play / stop" }));
   } else if (a.kind === "effect") body.appendChild(big("div", { className: "qdesc", textContent: a.desc || "HyperFrames effect" }));
-  else body.appendChild(big("div", { className: "qicon", textContent: ICON[a.kind] || "📄" }));
+  else body.appendChild(big("div", { className: "qicon", textContent: ICON[a.kind] || "▤" }));
   const meta = big("div", { className: "qm" });
   meta.appendChild(big("b", { textContent: a.name }));
   meta.appendChild(big("div", { textContent: [a.kind === "effect" ? `HyperFrames ${a.sub || "block"}: ${a.block}` : a.path, a.dur ? `${Math.round(a.dur)} s` : ""].filter(Boolean).join(" · ") }));
@@ -877,7 +877,7 @@ function renderSel() {
   $("#selCount").textContent = SEL.size ? `${SEL.size} selected` : "";
   const box = $("#selList"); box.innerHTML = "";
   for (const [k, a] of SEL) {
-    const c = document.createElement("span"); c.className = "sc"; c.textContent = `${ICON[a.kind] || "📎"} ${a.name}`; c.title = a.path || a.block;
+    const c = document.createElement("span"); c.className = "sc"; c.textContent = `${ICON[a.kind] || "＋"} ${a.name}`; c.title = a.path || a.block;
     const x = document.createElement("b"); x.textContent = "✕"; x.onclick = () => { SEL.delete(k); renderSel(); };
     c.appendChild(x); box.appendChild(c);
   }
@@ -910,7 +910,7 @@ async function loadCreations() {
     const acts = r.querySelector(".acts");
     const b = (label, fn, cls = "ghost small") => { const x = document.createElement("button"); x.className = cls; x.textContent = label; x.onclick = fn; acts.appendChild(x); };
     b("Progress", () => openLog(n.id));
-    if (n.result && n.preview && n.status === "created") b("🎬 Render final", () => post(`/api/notes/${n.id}/final`).then(() => { openLog(n.id); loadCreations(); }), "primary small");
+    if (n.result && n.preview && n.status === "created") b("Render final", () => post(`/api/notes/${n.id}/final`).then(() => { openLog(n.id); loadCreations(); }), "primary small");
     if (n.result) b("Open ▶", () => { setMode("editor"); showTab(false); loadVideos().then(() => openVideo(n.result)); }, "primary small");
     if (["failed", "done", "cancelled", "draft"].includes(n.status)) b("Run again", () => post(`/api/notes/${n.id}/send`).then(() => { openLog(n.id); loadCreations(); }));
     if (!["queued", "running"].includes(n.status)) b("✕", () => deleteNote(n));
@@ -993,7 +993,7 @@ function addDrops() {                                              // placed ass
     el.style.left = d.x * 100 + "%"; el.style.top = d.y * 100 + "%";
     el.title = "drag to move" + (vis ? " · mouse wheel to resize" : "");
     if (vis) { el.style.width = d.w * 100 + "%"; const im = new Image(); im.src = d.thumb; im.draggable = false; el.appendChild(im); }
-    else el.append(`${ICON[d.kind] || "📎"} ${d.name}`);
+    else el.append(`${ICON[d.kind] || "＋"} ${d.name}`);
     const lbl = document.createElement("span"); lbl.className = "lbl"; lbl.textContent = `${i + 1}  ${vis ? d.name : ""}`.trim(); el.appendChild(lbl);
     const x = document.createElement("span"); x.className = "x"; x.textContent = "✕"; x.title = "Remove"; el.appendChild(x);
     x.onmousedown = (e) => e.stopPropagation();
@@ -1028,7 +1028,7 @@ function listDrops() {
     const r = document.createElement("div"); r.className = "dr";
     r.innerHTML = '<span class="n"></span><span class="nm"></span><span class="tm" title="Go to this time"></span><span class="rm" title="Remove">✕</span>';
     r.querySelector(".n").textContent = i + 1;
-    r.querySelector(".nm").textContent = `${ICON[d.kind] || "📎"} ${d.name}` + (d.x != null
+    r.querySelector(".nm").textContent = `${ICON[d.kind] || "＋"} ${d.name}` + (d.x != null
       ? ` · ${Math.round(d.x * 100)}%, ${Math.round(d.y * 100)}%` + (d.w ? ` · ${Math.round(d.w * 100)}% wide` : "") : " · on the timeline");
     r.title = d.path || `HyperFrames ${d.sub || "block"}: ${d.block}`;
     r.querySelector(".tm").textContent = tc(d.t);
@@ -1139,7 +1139,7 @@ function renderMakeItems() {
     const c = document.createElement("div"); c.className = "mki"; c.title = a.path || a.block || a.lut || "";
     const th = document.createElement("div"); th.className = "th";
     const src = thumbOf(a);
-    if (src) { const im = new Image(); im.src = src; im.draggable = false; th.appendChild(im); } else th.textContent = ICON[a.kind] || "📎";
+    if (src) { const im = new Image(); im.src = src; im.draggable = false; th.appendChild(im); } else th.textContent = ICON[a.kind] || "＋";
     const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = a.name;
     const x = document.createElement("b"); x.className = "x"; x.textContent = "✕"; x.title = "Remove";
     x.onclick = () => { SEL.delete(k); renderSel(); };
@@ -1332,7 +1332,7 @@ setMode("home");
 
 // ---------------------------------------------------------------- folders: Default assets / Effects / Looks, browsable in the bin and on the Make page
 const NAV = { panel: "", make: "" };                                // "" = the top level (your bin)
-const ROOT_DIRS = [["assets/Default assets", "Default assets", "📁"], ["@effects", "Effects", "✨"], ["@looks", "Looks", "🎨"]];
+const ROOT_DIRS = [["assets/Default assets", "Default assets", "▱"], ["@effects", "Effects", "◇"], ["@looks", "Looks", "◐"]];
 const ROOT_SUB = { "assets/Default assets": "", "@effects": "", "@looks": "" };
 api("/api/browse?dir=" + enc("assets/Default assets") + "&n=0").then((r) => {
   ROOT_SUB["assets/Default assets"] = `${r.dirs.length} folders · ${r.dirs.reduce((a, d) => a + d.count, 0).toLocaleString()} files`;
@@ -1379,7 +1379,7 @@ async function renderFolder(where, grid) {
   else { const r = await api(`/api/browse?dir=${enc(d)}&n=400`); dirs = r.dirs; items = r.items; total = r.total; }
   if (NAV[where] !== d) return;                                    // the user moved on meanwhile
   grid.innerHTML = "";
-  for (const x of dirs) grid.appendChild(folderTile(x.name, `${x.count.toLocaleString()} file${x.count === 1 ? "" : "s"}`, "📁", () => go(where, x.dir)));
+  for (const x of dirs) grid.appendChild(folderTile(x.name, `${x.count.toLocaleString()} file${x.count === 1 ? "" : "s"}`, "▱", () => go(where, x.dir)));
   for (const a of items) grid.appendChild(assetTile(a, mode));
   if (!dirs.length && !items.length) grid.innerHTML = `<div class="empty">${q ? "Nothing matches in this folder." : "This folder is empty."}</div>`;
   if (total > items.length) grid.insertAdjacentHTML("beforeend", `<div class="empty">Showing ${items.length} of ${total.toLocaleString()}. Type in the search box to find the rest.</div>`);
@@ -1503,7 +1503,7 @@ function setNoSlop(on) {
   try { localStorage.setItem("rr.noslop", NOSLOP ? "1" : "0"); } catch (e) { /* per-viewer convenience only */ }
   for (const id of ["#noSlop2", "#noSlopT"]) {
     const b = $(id); b.classList.toggle("on", NOSLOP); b.setAttribute("aria-pressed", String(NOSLOP));
-    b.textContent = NOSLOP ? "✓ AI slop audio removed" : "🔇 Remove AI slop audio";
+    b.textContent = NOSLOP ? "✓ AI slop audio removed" : "Remove AI slop audio";
   }
 }
 for (const id of ["#noSlop2", "#noSlopT"]) $(id).onclick = () => { setNoSlop(!NOSLOP); toast(NOSLOP ? "Claude and Codex will skip the overused stock sounds" : "AI slop audio filter off"); };
@@ -1542,7 +1542,7 @@ function setDraft(on) {
   for (const id of ["#draftT", "#draftE", "#draft2"]) {
     const b = $(id); if (!b) continue;
     b.classList.toggle("on", DRAFT); b.setAttribute("aria-pressed", String(DRAFT));
-    b.textContent = DRAFT ? "⚡ Quick preview: on" : "⚡ Quick preview: off";
+    b.textContent = DRAFT ? "Quick preview: on" : "Quick preview: off";
   }
 }
 for (const id of ["#draftT", "#draftE", "#draft2"]) $(id).onclick = () => {

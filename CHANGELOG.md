@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0 (2026-11-14)
+
+- **New interface**, designed by Codex (GPT-6.1-sol) and checked by Claude: a "cutting room" look with warm charcoal surfaces,
+  ivory type and ochre controls, line icons instead of emoji, and the picture as the hero. Every screen, panel and dialog was
+  redrawn; all functions, shortcuts and settings work as before.
+- Local fonts (no internet needed): Manrope and IBM Plex Sans Arabic, both under the SIL Open Font License
+  (`app/static/*-OFL.txt`).
+
 ## 1.2.0 (2026-11-14)
 
 - **Claude, Codex or both:** `Codex Login.bat` signs in with ChatGPT or a hidden API key, tests the connection,
