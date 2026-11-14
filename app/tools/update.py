@@ -25,6 +25,7 @@ MANIFEST = json.loads((APP / "data" / "update-manifest.json").read_text(encoding
 BACKUPS = ROOT / "backups"
 STAGE = BACKUPS / ".staging"
 UA = {"User-Agent": "ai-video-editor-updater"}
+ALWAYS = {"VERSION", "app/data/installed-files.json", "CHANGELOG.md"}       # metadata: always the new version
 
 
 def vtuple(v): return tuple(int(x) for x in "".join(c for c in v.strip() if c.isdigit() or c == ".").split(".") if x)
@@ -75,7 +76,7 @@ def user_fingerprint():
         for f in files:
             if not f.is_file(): continue
             rel = f.relative_to(ROOT).as_posix()
-            if owner(rel) != "user" or rel == "settings.json": continue
+            if owner(rel) != "user" or rel in ("settings.json", "workspace/ASSETS.md"): continue   # ASSETS.md: the app rewrites it
             st = f.stat(); h.update(f"{rel}|{st.st_size}|{int(st.st_mtime)}\n".encode("utf-8", "replace")); n += 1
     return {"files": n, "sum": h.hexdigest()}
 
@@ -112,7 +113,7 @@ def plan(new_root):
         if not dst.exists(): P["add"].append(rel); continue
         if norm_text_sha(dst) == norm_text_sha(src): continue
         shipped = old_manifest.get(rel)
-        if shipped and norm_text_sha(dst) != shipped: P["conflict"].append(rel)
+        if shipped and norm_text_sha(dst) != shipped and rel not in ALWAYS: P["conflict"].append(rel)
         else: P["replace"].append(rel)
     for rel, shipped in sorted(old_manifest.items()):
         if rel in new_files or owner(rel) == "user" or not (ROOT / rel).exists(): continue
@@ -135,7 +136,7 @@ def merge_settings(new_root):
 def verify():
     errors = []
     for f in list((APP).rglob("*.py")) + list((ROOT / "workspace" / "tools").rglob("*.py")):
-        if "python" in f.relative_to(APP).parts[:1]: continue
+        if f.relative_to(ROOT).as_posix().startswith(("app/python/", "backups/")): continue
         try: py_compile.compile(str(f), cfile=os.path.join(tempfile.gettempdir(), "rr_update_check.pyc"), doraise=True)
         except py_compile.PyCompileError as e: errors.append(f"{f.relative_to(ROOT)}: {e.msg[:200]}")
     for need in ("app/server.py", "app/static/index.html", "app/static/app.js", "VERSION", "Start Review Room.vbs"):
@@ -151,6 +152,8 @@ def rollback(bdir=None):
     for f in (bdir / "files").rglob("*"):
         if f.is_file():
             dst = ROOT / f.relative_to(bdir / "files"); dst.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(f, dst)
+    if (bdir / "settings.json").exists(): shutil.copy2(bdir / "settings.json", ROOT / "settings.json")
+    for rel in meta.get("conflict", []): (ROOT / (rel + ".update-new")).unlink(missing_ok=True)
     print(f"rolled back from {bdir}")
     return bdir
 
@@ -194,8 +197,8 @@ def main(argv):
                     return result(ok=False, method="git", error="verify failed: " + "; ".join(errs or ["user files changed"]),
                                   hint="run `git log` / `git reflog` and reset to the previous commit")
                 return result(ok=True, method="git", installed=new, previous=old, settings_added=added, git=out[-500:])
-        except Exception as e:
-            return result(ok=False, method="git", error=str(e))
+        except Exception as e:                                       # git could not do it: use the file method below
+            print(f"git update not possible ({e}); updating file by file instead")
     new_root = download(STAGE / "new")
     P = plan(new_root)
     print(f"{old} -> {new}: add {len(P['add'])}, replace {len(P['replace'])}, remove {len(P['remove'])}, "
@@ -208,6 +211,7 @@ def main(argv):
     (bdir / "files").mkdir(parents=True)
     (bdir / "plan.json").write_text(json.dumps({"from": old, "to": new, **P}, indent=1), encoding="utf-8")
     try:
+        if (ROOT / "settings.json").exists(): shutil.copy2(ROOT / "settings.json", bdir / "settings.json")
         for rel in P["replace"] + P["remove"]:
             dst = bdir / "files" / rel; dst.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(ROOT / rel, dst)
         for rel in P["add"] + P["replace"]:
