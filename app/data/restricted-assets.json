@@ -1,0 +1,14 @@
+{
+ "about": "Assets you may use in your own videos but must not share as files (licence or privacy). Settings > 'Use assets that can't be shared' turns them on or off for Claude, Codex and the asset browser. They are not in the public asset pack: Mixkit items are re-downloaded from Mixkit by app/tools/fetch_mixkit_assets.py, Sonniss from sonniss.com.",
+ "folders": {
+  "assets/Default assets/Music/": "Mixkit music (Mixkit licence: free to use, no re-sharing)",
+  "assets/Default assets/Footage/": "Mixkit stock footage (Mixkit licence: free to use, no re-sharing)",
+  "assets/Default assets/Sound effects/Mixkit/": "Mixkit sound effects (Mixkit licence: free to use, no re-sharing)",
+  "assets/Default assets/Sound effects/Pro (curated)/": "edited Mixkit sound effects",
+  "assets/Default assets/Sound effects/Sonniss GDC 2026/": "Sonniss GDC bundle (royalty-free use, no re-sharing)",
+  "assets/Default assets/Arabic/": "Arabic memes and sound bites copied from online videos (copyright of their owners)",
+  "assets/Default assets/Brands/": "client logos and contact details (private)",
+  "assets/Default assets/Voice samples/": "text-to-speech samples (each voice's own terms)",
+  "assets/Default assets/Icons/Remixicon/": "Remix Icon (Remix Icon License: free to use, not to re-share as an icon pack)"
+ }
+}

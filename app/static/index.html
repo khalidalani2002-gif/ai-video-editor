@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review Room</title>
+<link rel="icon" href="/static/icon.png">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header>
+  <div class="brand"><img src="/static/icon.png" alt=""> Review Room</div>
+  <button id="homeBtn" class="ghost small hidden" title="Back to the start screen">⌂ Home</button>
+  <div id="claudeState" class="pill">…</div>
+  <div class="spacer"></div>
+  <span class="hint">Space play · ←/→ frame · Shift+←/→ 1 s · ↑/↓ cut · wheel on timeline = zoom · wheel on picture = frame step · = / − zoom · \ fit · I / O range · click = pin · drag = box · Esc clear</span>
+  <button id="setBtn" class="ghost" title="Settings">⚙ Settings</button>
+  <button id="quitBtn" class="ghost" title="Close the Review Room server">Quit</button>
+</header>
+
+<main>
+  <aside id="library">
+    <div class="tabs"><button id="tabVideos" class="tab on">🎬 Videos</button><button id="tabAssets" class="tab">✨ Assets &amp; effects</button></div>
+    <div id="videosPane" class="pane">
+      <input id="search" type="search" placeholder="Search videos…" autocomplete="off">
+      <div id="videoList"></div>
+    </div>
+    <div id="assetsPane" class="pane hidden">
+      <div class="aTop"><input id="aSearch" type="search" placeholder="Filter your bin…" autocomplete="off">
+        <button id="aBig" class="ghost" title="Big grid view">⤢ Big</button></div>
+      <div class="aTop"><button id="aAdd" class="ghost">＋ Add from library</button><span class="aHint">or drop files from your PC here (saved in workspace\assets)</span></div>
+      <div id="aCrumbs" class="crumbs hidden"></div>
+      <div id="aKinds"></div>
+      <div id="aGrid"></div>
+      <div class="aHint">Hover = quick view · click a sound = play · drag onto the picture or the timeline · Ctrl+click = select</div>
+    </div>
+    <div id="tray" class="hidden">
+      <div id="mkCompose" class="hidden">
+        <div class="trayHead"><b>🎬 Make a video</b><span id="selCount" class="muted"></span><span class="spacer"></span>
+          <button id="selClear" class="ghost small">Clear</button></div>
+        <div id="selList"></div>
+        <textarea id="mkText" dir="auto" placeholder="What should Claude make from these? Leave empty and Claude decides.  اكتب الفكرة أو اتركها فارغة"></textarea>
+        <div class="row"><select id="mkFmt"><option value="">Format: auto</option><option value="9:16">9:16 reel</option>
+          <option value="16:9">16:9</option><option value="1:1">1:1</option><option value="4:5">4:5</option></select>
+          <select id="mkEngine" class="lvl eng" title="Which AI makes the edit"><option value="claude">Claude</option><option value="codex">Codex</option></select>
+          <select id="mkLevel" class="lvl"><option value="normal">Normal edit</option><option value="heavy">Heavy edit</option></select>
+          <button id="mkStyleT" class="ghost styleBtn">Style: Auto ▾</button>
+          <button id="noSlopT" class="ghost slopBtn" aria-pressed="false" title="Ignore the overused stock sounds AI videos keep using (the whooshes, pops, risers and corporate tracks found in earlier Claude videos)">🔇 Remove AI slop audio</button>
+          <span class="spacer"></span><button id="mkGo" class="primary">Make video ➜</button></div>
+      </div>
+      <div id="crHead" class="trayHead hidden"><b>Made by Claude</b></div>
+      <div id="creations"></div>
+    </div>
+  </aside>
+
+  <section id="center">
+    <div id="stageWrap">
+      <div id="empty">Pick a video on the left.</div>
+      <div id="stage">
+        <video id="video" preload="auto" playsinline></video>
+        <img id="lookPeek" class="hidden" alt="">
+        <div id="safe" class="hidden"></div>
+        <div id="overlay"></div>
+        <div id="peekBadge" class="hidden"></div>
+        <div id="abBadge" class="hidden">B · new version</div>
+      </div>
+    </div>
+
+    <div id="transport">
+      <button id="playBtn" title="Play / pause (Space)">▶</button>
+      <button id="prevFrame" title="Previous frame (←)">⟨</button>
+      <button id="nextFrame" title="Next frame (→)">⟩</button>
+      <div id="tc">00:00:00</div>
+      <div id="frameNo">frame 0</div>
+      <div class="spacer"></div>
+      <button id="inBtn" title="Set range in (I)">I</button>
+      <button id="outBtn" title="Set range out (O)">O</button>
+      <button id="clearRange" class="ghost" title="Clear range">✕ range</button>
+      <div class="zoom"><button id="zoomOut" class="ghost" title="Zoom out (−)">−</button>
+        <input id="zoom" type="range" min="0" max="1000" step="1" value="0" title="Timeline zoom (mouse wheel on the timeline)">
+        <button id="zoomIn" class="ghost" title="Zoom in (=)">+</button>
+        <button id="zoomFit" class="ghost" title="Show the whole video (\)">Fit</button>
+        <span id="zoomInfo">whole video</span></div>
+      <button id="prevCut" class="ghost" title="Previous cut (↑)">⇤ cut</button>
+      <button id="nextCut" class="ghost" title="Next cut (↓)">cut ⇥</button>
+      <button id="txBtn" class="ghost" title="Show the spoken words under the waveform (whisper)">Transcript</button>
+      <select id="safeSel" title="Show where the phone app's buttons and captions cover the video">
+        <option value="">Safe zones: off</option><option value="ig">Instagram Reels</option>
+        <option value="tt">TikTok</option><option value="yt">YouTube Shorts</option></select>
+      <label class="vol">🔊 <input id="vol" type="range" min="0" max="1" step="0.05" value="0.8"></label>
+    </div>
+
+    <div id="timeline">
+      <div id="tlScroll">
+        <div id="tlInner">
+          <div id="tlView"><canvas id="ruler"></canvas><canvas id="strip"></canvas><canvas id="wave"></canvas><canvas id="words"></canvas></div>
+          <div id="range" class="hidden"></div>
+          <div id="frameBand" class="hidden"></div>
+          <div id="hoverLine" class="hidden"></div>
+          <div id="markers"></div>
+          <div id="playhead"><div class="knob"></div></div>
+        </div>
+      </div>
+      <div id="hoverTip" class="hidden"></div>
+    </div>
+  </section>
+
+  <aside id="panel">
+    <div id="composer">
+      <h3>New edit</h3>
+      <div class="meta">
+        <span id="cTime" class="chip">00:00:00</span>
+        <span id="cSpot" class="chip muted">no spot (click the video)</span>
+        <span id="cRange" class="chip muted hidden"></span>
+      </div>
+      <div id="cDrops"></div>
+      <textarea id="noteText" dir="auto" placeholder="What should change here?  اكتب التعديل هنا…"></textarea>
+      <div class="row">
+        <button id="micBtn" class="ghost" title="Speak the note, Arabic or English">🎤 Speak</button>
+        <div class="dd"><button id="actBtn" class="ghost" title="Ready-made AI edits: fill the note, then adjust and send">AI actions ▾</button>
+          <div id="actMenu" class="menu hidden"></div></div>
+        <select id="engineSel" class="lvl eng" title="Which AI makes the edit"><option value="claude">Claude</option><option value="codex">Codex</option></select>
+        <select id="levelSel" class="lvl"><option value="normal">Normal edit</option><option value="heavy">Heavy edit</option></select>
+        <button id="styleBtn" class="ghost styleBtn">Style: Auto ▾</button>
+        <div class="spacer"></div>
+        <button id="saveNote" class="ghost">Save note</button>
+        <button id="sendNote" class="primary">Send to Claude ➜</button>
+      </div>
+    </div>
+    <div id="tools">
+      <button id="colorBtn" title="Auto colour fix, match to a reference frame, LUT looks">🎨 Colour…</button>
+    </div>
+    <h3 class="listHead">Notes on this video <span id="queueInfo" class="muted"></span><span class="spacer"></span>
+      <button id="sendAll" class="primary small hidden" title="Every draft note in ONE Claude job and one render">Send all drafts ➜</button></h3>
+    <div id="notes"></div>
+  </aside>
+</main>
+
+<div id="home" class="hidden">
+  <div class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="hWrap">
+    <p id="hStatus" class="hStatus">&nbsp;</p>
+    <nav class="hMenu" aria-label="Start">
+      <button id="goMake" class="hRow make">
+        <span class="hEn">Make a video</span><span class="hLead" aria-hidden="true"></span><kbd>M</kbd>
+        <span class="hSub">From your clips, photos and music, or from a single sentence.</span>
+      </button>
+      <button id="goEdit" class="hRow edit">
+        <span class="hEn">Edit a video</span><span class="hLead" aria-hidden="true"></span><kbd>E</kbd>
+        <span class="hSub">Pin the frame, write the change, and compare the new version.</span>
+      </button>
+    </nav>
+    <section class="hRecent">
+      <h2>Recent videos</h2>
+      <div id="hRecent"></div>
+    </section>
+  </div>
+</div>
+
+<div id="makePage" class="hidden">
+  <section class="mkMain">
+    <h2>🎬 Make a video</h2>
+    <div id="mkDrop">
+      <div class="big">Drop videos, photos, music, logos… anything</div>
+      <div class="muted">or pick from your videos and bin on the right · nothing at all = Claude builds it from your description (animation or 3D)</div>
+      <div id="mkItems"></div>
+      <div id="mkCount" class="muted">nothing yet</div>
+    </div>
+    <textarea id="mkDesc" dir="auto" placeholder="Describe the video you want: the idea, the mood, the text, the length…   صف الفيديو الذي تريده"></textarea>
+    <div class="row mkRow">
+      <button id="mkMic" class="ghost">🎤 Speak</button>
+      <select id="mkFmt2"><option value="">Format: auto</option><option value="9:16">9:16 reel</option><option value="16:9">16:9</option>
+        <option value="1:1">1:1</option><option value="4:5">4:5</option></select>
+      <label class="engLbl">Make with <select id="mkEngine2" class="lvl eng" title="Which AI makes the edit"><option value="claude">Claude</option><option value="codex">Codex</option></select></label>
+      <select id="mkLevel2" class="lvl"><option value="normal">Normal edit</option><option value="heavy">Heavy edit</option></select>
+      <button id="mkStyle2" class="ghost styleBtn">Style: Auto ▾</button>
+      <button id="noSlop2" class="ghost slopBtn" aria-pressed="false" title="Ignore the overused stock sounds AI videos keep using (the whooshes, pops, risers and corporate tracks found in earlier Claude videos)">🔇 Remove AI slop audio</button>
+      <span class="spacer"></span>
+      <button id="mkGo2" class="primary big">Make video ➜</button>
+    </div>
+    <div id="mkLevelInfo" class="muted"></div>
+    <h3>Made by Claude</h3>
+    <div id="creations2"></div>
+  </section>
+  <aside class="mkSide">
+    <div class="aTop"><b>Pick from</b><span class="spacer"></span><button id="mkLib" class="ghost small">＋ Library</button></div>
+    <input id="mkSearch" type="search" placeholder="Search assets… (fire, whoosh, logo)" autocomplete="off">
+    <div id="mkCrumbs" class="crumbs hidden"></div>
+    <div class="aHint">Click to add or remove · hover = quick view · ▶ = listen</div>
+    <div id="mkBinGrid"></div>
+  </aside>
+</div>
+<div id="toast" class="hidden"></div>
+<div id="setModal" class="hidden">
+  <div class="mhead"><b>⚙ Settings</b><span class="spacer"></span><button id="setClose" class="ghost">✕</button></div>
+  <label class="setRow"><input type="checkbox" id="setRestricted">
+    <span><b>Use assets that can't be shared</b><br><small>Free to use in your own videos, but their licence (or privacy) forbids
+    sharing the files. When off, Claude, Codex and the asset browser ignore them.</small></span></label>
+  <ul id="setList"></ul>
+</div>
+<div id="stylePop" class="hidden"></div>
+<div id="dropHint" class="hidden"></div>
+<div id="qv" class="hidden"></div>
+<div id="libModal" class="hidden">
+  <div class="mhead"><b>＋ Add from the library</b>
+    <input id="libSearch" type="search" placeholder="Search 52,000 assets: fire, whoosh, glitch, tooth, logo…" autocomplete="off">
+    <span class="spacer"></span><button id="libClose" class="ghost">✕</button></div>
+  <div id="libKinds"></div>
+  <div class="aHint">＋ adds to your bin · drag straight onto the picture or the timeline · hover = quick view · click a sound = play</div>
+  <div id="libGrid"></div>
+</div>
+<div id="drawer" class="hidden">
+  <div class="drawerHead"><b id="drawerTitle">Claude</b><div class="spacer"></div>
+    <button id="cancelJob" class="ghost hidden">Stop</button><button id="closeDrawer" class="ghost">Close</button></div>
+  <div id="log"></div>
+</div>
+
+<div id="colorModal" class="hidden">
+  <div class="mhead"><b>🎨 Colour</b><span class="spacer"></span>
+    <label class="str">strength <input id="colStrength" type="range" min="10" max="100" step="5" value="60"> <span id="colStrengthV">60%</span></label>
+    <button id="colorClose" class="ghost">✕</button></div>
+  <div class="mnote">For camera footage. Everything burned into the video (captions, logos) is changed too. Each option makes a new
+    <b>(rev N)</b> beside the video. Compare A/B, then Approve or Delete it.</div>
+  <div class="msec"><h4>Auto fix</h4><p>Removes colour casts, sets black and white points, balances midtones. Measured separately for every shot.</p>
+    <button id="autoGo" class="primary">Make the auto-fixed version</button></div>
+  <div class="msec"><h4>Match to a reference frame</h4><p id="refInfo">Pause on a frame whose colours you like (in any video) and press "Use this frame".</p>
+    <button id="refSet">Use this frame as reference</button> <button id="matchGo" class="primary" disabled>Match this video to it</button></div>
+  <div class="msec"><h4>Looks <span class="muted">(click to preview on the paused frame)</span></h4><div id="lookGrid"></div>
+    <button id="lookGo" class="primary" disabled>Apply look</button></div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

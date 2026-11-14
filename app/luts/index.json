@@ -1,0 +1,122 @@
+[
+ {
+  "id": "clean-clinical",
+  "file": "clean-clinical.cube",
+  "description": "Neutral-cool, bright, clean whites; medical/dental/corporate"
+ },
+ {
+  "id": "teal-orange",
+  "file": "teal-orange.cube",
+  "description": "Blockbuster teal shadows / orange highlights, skin protected"
+ },
+ {
+  "id": "warm-film",
+  "file": "warm-film.cube",
+  "description": "Kodak-style warm film: soft toe, golden highlights, rich reds"
+ },
+ {
+  "id": "cool-film",
+  "file": "cool-film.cube",
+  "description": "Fuji-style cool film: green-cyan shadows, clean highlights"
+ },
+ {
+  "id": "bleach-bypass",
+  "file": "bleach-bypass.cube",
+  "description": "Silver-retained: high contrast, low saturation, gritty"
+ },
+ {
+  "id": "matte-fade",
+  "file": "matte-fade.cube",
+  "description": "Lifted blacks, soft rolled whites, gentle desat (lifestyle/IG)"
+ },
+ {
+  "id": "golden-hour",
+  "file": "golden-hour.cube",
+  "description": "Warm sunset glow, amber mids, soft contrast"
+ },
+ {
+  "id": "moody-blue",
+  "file": "moody-blue.cube",
+  "description": "Dark cinematic blue: crushed cool shadows, muted color"
+ },
+ {
+  "id": "day-for-night",
+  "file": "day-for-night.cube",
+  "description": "Night simulation from daylight footage: dark, blue, low sat"
+ },
+ {
+  "id": "vintage-70s",
+  "file": "vintage-70s.cube",
+  "description": "Faded warm yellow-green vintage print"
+ },
+ {
+  "id": "cross-process",
+  "file": "cross-process.cube",
+  "description": "Cross-processed: yellow highlights, blue-magenta shadows, punchy"
+ },
+ {
+  "id": "noir-contrast",
+  "file": "noir-contrast.cube",
+  "description": "Hard black-and-white noir"
+ },
+ {
+  "id": "soft-bw",
+  "file": "soft-bw.cube",
+  "description": "Soft, filmic black-and-white with lifted blacks"
+ },
+ {
+  "id": "sepia",
+  "file": "sepia.cube",
+  "description": "Warm sepia monochrome"
+ },
+ {
+  "id": "pastel-dream",
+  "file": "pastel-dream.cube",
+  "description": "Airy pastel: bright, low contrast, pink-cyan tints"
+ },
+ {
+  "id": "neon-cyber",
+  "file": "neon-cyber.cube",
+  "description": "Cyberpunk magenta/teal split, deep blacks"
+ },
+ {
+  "id": "desert-warm",
+  "file": "desert-warm.cube",
+  "description": "Hot dry desert / Arabic summer: ochre, bleached sky"
+ },
+ {
+  "id": "emerald",
+  "file": "emerald.cube",
+  "description": "Lush green emphasis, cool shadows"
+ },
+ {
+  "id": "high-key-commercial",
+  "file": "high-key-commercial.cube",
+  "description": "Bright, airy, high-key advertising look"
+ },
+ {
+  "id": "low-key-dramatic",
+  "file": "low-key-dramatic.cube",
+  "description": "Deep shadows, controlled highlights, drama"
+ },
+ {
+  "id": "corporate-blue",
+  "file": "corporate-blue.cube",
+  "description": "Trustworthy blue-steel corporate grade"
+ },
+ {
+  "id": "skin-flatter",
+  "file": "skin-flatter.cube",
+  "description": "Warm flattering skin, cooler background"
+ },
+ {
+  "id": "retro-vhs",
+  "file": "retro-vhs.cube",
+  "description": "VHS-era color: smeared sat, magenta-green shift, lifted blacks"
+ },
+ {
+  "id": "summer-vivid",
+  "file": "summer-vivid.cube",
+  "description": "Punchy vivid summer color, bright and saturated"
+ }
+]

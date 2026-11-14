@@ -1,0 +1,11 @@
+# user data and big local files (never committed)
+app/python/
+**/__pycache__/
+app/tools/style_examples/out/
+app/tools/style_examples/html/
+app/tools/style_examples/.chrome-profile/
+workspace/videos/*
+workspace/projects/*
+workspace/assets/*
+workspace/review/*
+!**/.gitkeep

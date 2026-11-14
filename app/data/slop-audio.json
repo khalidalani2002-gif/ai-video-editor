@@ -1,0 +1,47 @@
+{
+ "about": "Overused stock audio found in videos Claude made (checked by file checksum and project references). When 'Remove AI slop audio' is on, none of these may be used.",
+ "folders": [
+  ".claude/skills/media-use/audio/assets/sfx/",
+  "assets/Default assets/Sound effects/Pro (curated)/"
+ ],
+ "files": [
+  "assets/Default assets/Music/Ambient/140-cyberpunk-city.mp3",
+  "assets/Default assets/Music/Ambient/441-meditation.mp3",
+  "assets/Default assets/Music/Ambient/726-uplifting-bass.mp3",
+  "assets/Default assets/Music/Chillout/175-digital-clouds.mp3",
+  "assets/Default assets/Music/Corporate music/724-placeit-world-01.mp3",
+  "assets/Default assets/Music/Deep house/770-autofahren.mp3",
+  "assets/Default assets/Music/Electronica/609-moon-walk.mp3",
+  "assets/Default assets/Music/Film score/543-a-new-life.mp3",
+  "assets/Default assets/Music/Film score/846-i-won-t-surrender.mp3",
+  "assets/Default assets/Music/Orchestral hybrid/678-epical-drums-03.mp3",
+  "assets/Default assets/Music/Orchestral hybrid/679-epical-drums-04.mp3",
+  "assets/Default assets/Music/Orchestral pop/606-drawing-the-sky.mp3",
+  "assets/Default assets/Music/Underscore/759-romantic-05.mp3",
+  "assets/Default assets/Sound effects/Mixkit/Choir/794-tech-choir-cinematic-riser.mp3",
+  "assets/Default assets/Sound effects/Mixkit/Cinematic/1143-cinematic-whoosh-deep-impact.mp3",
+  "assets/Default assets/Sound effects/Mixkit/Cinematic/1469-flying-fast-swoosh.mp3",
+  "assets/Default assets/Sound effects/Mixkit/Cinematic/2900-movie-logo-intro-impact.mp3",
+  "assets/Default assets/Sound effects/Mixkit/Cinematic/784-reverse-cinematic-impact-trailer.mp3",
+  "assets/Default assets/Sound effects/Mixkit/Intro/1146-intro-transition.mp3",
+  "assets/Default assets/Sound effects/Mixkit/Intro/2903-movie-whoosh-impact-presentation.mp3",
+  "assets/Default assets/Sound effects/Mixkit/Movie/175-short-transition-sweep.mp3",
+  "assets/Default assets/Sound effects/Mixkit/Sci fi/3114-fast-sci-fi-transition-sweep.mp3",
+  "assets/Default assets/Sound effects/Mixkit/Slide/3120-technology-transition-slide.mp3",
+  "assets/Default assets/Sound effects/Mixkit/Swoosh/3115-fast-transitions-swoosh.mp3",
+  "assets/Default assets/Sound effects/Mixkit/Synth/645-cinematic-synth-riser.mp3",
+  "assets/Default assets/Sound effects/Mixkit/Transition/1490-fast-whoosh-transition.mp3",
+  "assets/Default assets/Sound effects/Mixkit/Transition/2608-air-zoom-vacuum.mp3"
+ ],
+ "avoid_words": [
+  "whoosh",
+  "swoosh",
+  "riser",
+  "impact",
+  "boom",
+  "ding",
+  "pop",
+  "glitch",
+  "uplifting corporate"
+ ]
+}

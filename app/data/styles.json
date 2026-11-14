@@ -1,0 +1,298 @@
+[
+ {
+  "id": "auto",
+  "name": "Auto",
+  "desc": "Claude picks the style that fits the material.",
+  "prompt": "Choose the style that best fits the material and the request, and say which one you chose.",
+  "group": "Edit footage",
+  "img": "/static/style-auto.jpg"
+ },
+ {
+  "id": "cinematic",
+  "name": "Cinematic",
+  "desc": "Slow, graded, film-like, with a score and elegant titles.",
+  "prompt": "Cinematic: unhurried pacing with shots held 2-4 s, a filmic grade (teal-orange or warm film look), 2.39:1 letterbox bars when the format is horizontal, slow push-ins, match cuts and dips to black, an orchestral or ambient score, elegant serif titles with generous letter-spacing.",
+  "group": "Edit footage",
+  "img": "/static/style-cinematic.jpg"
+ },
+ {
+  "id": "reels",
+  "name": "Fast reels",
+  "desc": "Hook in the first second, cuts on the beat, bold captions.",
+  "prompt": "Fast social reel: a hook in the first second, cuts every 0.5-1.5 s on the beat, punch-in zooms, whooshes on transitions, bold kinetic captions (still at least 2.3 s per text beat), energetic music, 9:16, ends on a clear call to action.",
+  "group": "Edit footage",
+  "img": "/static/style-reels.jpg"
+ },
+ {
+  "id": "minimal",
+  "name": "Clean & minimal",
+  "desc": "Calm pacing, space, one typeface, soft music.",
+  "prompt": "Clean and minimal: calm pacing, lots of empty space, one sans-serif typeface in two weights, simple cuts and gentle fades, a natural colour correction, soft music, very little text.",
+  "group": "Edit footage",
+  "img": "/static/style-minimal.jpg"
+ },
+ {
+  "id": "corporate",
+  "name": "Corporate",
+  "desc": "Brand colours, lower thirds, logo intro and outro.",
+  "prompt": "Corporate: the brand's colours and logo (intro and end card), clean lower thirds for names and facts, steady pacing, smooth transitions, upbeat corporate music, a clear call to action with the contact details from the materials.",
+  "group": "Edit footage",
+  "img": "/static/style-corporate.jpg"
+ },
+ {
+  "id": "documentary",
+  "name": "Documentary",
+  "desc": "Story-led, B-roll over voice, natural grade.",
+  "prompt": "Documentary: built around the spoken story, B-roll over the voice, a natural grade, subtle lower thirds, an ambient score that stays under the voice, honest pacing with room to breathe.",
+  "group": "Edit footage",
+  "img": "/static/style-documentary.jpg"
+ },
+ {
+  "id": "vlog",
+  "name": "Vlog",
+  "desc": "Jump cuts, casual captions, upbeat and personal.",
+  "prompt": "Vlog: jump cuts that remove dead air, casual word-by-word captions, an emoji or sticker where it adds something, upbeat background music ducked under speech, a personal friendly tone.",
+  "group": "Edit footage",
+  "img": "/static/style-vlog.jpg"
+ },
+ {
+  "id": "meme",
+  "name": "Arabic comedy",
+  "desc": "Meme inserts, sound bites, freeze frames, punchy timing.",
+  "prompt": "Arabic comedy: comic timing with freeze frames, zoom punches and well-placed memes and sound bites (assets/Default assets/Arabic/Memes and Sounds), bold captions in Iraqi dialect (چ/گ as spoken). Never on serious or medical brand work: if the material is a brand ad, use the humour only lightly.",
+  "group": "Edit footage",
+  "img": "/static/style-meme.jpg"
+ },
+ {
+  "id": "tutorial",
+  "name": "Tutorial",
+  "desc": "Zoom on the action, highlight clicks, step captions.",
+  "prompt": "Tutorial / screen recording: zoom in on where the action happens, highlight clicks and key areas, numbered step captions, cut dead time and loading, keep the voice clear.",
+  "group": "Edit footage",
+  "img": "/static/style-tutorial.jpg"
+ },
+ {
+  "id": "trailer",
+  "name": "Trailer",
+  "desc": "Dramatic build, booms and risers, big title cards.",
+  "prompt": "Trailer / teaser: a dramatic build, booms, hits and risers, quick cuts separated by black, big title cards, a final reveal and date or call to action, short (15-45 s).",
+  "group": "Edit footage",
+  "img": "/static/style-trailer.jpg"
+ },
+ {
+  "id": "beforeafter",
+  "name": "Before & after",
+  "desc": "Split screens and wipes that show the change.",
+  "prompt": "Before and after: clear BEFORE / AFTER labels, split screens and wipe reveals between the two states, matched framing, a beat of stillness so the difference reads, then the result held at the end.",
+  "group": "Edit footage",
+  "img": "/static/style-beforeafter.jpg"
+ },
+ {
+  "id": "retro",
+  "name": "Retro VHS",
+  "desc": "VHS grain, colour fringing, retro fonts, synthwave.",
+  "prompt": "Retro VHS: tape grain and scan lines, slight colour fringing, 4:3 feel, retro display fonts, a synthwave or 80s track, glitch transitions used sparingly.",
+  "group": "Edit footage",
+  "img": "/static/style-retro.jpg"
+ },
+ {
+  "id": "luxury",
+  "name": "Luxury",
+  "desc": "Dark and gold, slow motion, elegant serif type.",
+  "prompt": "Luxury: dark backgrounds with gold accents, slow motion and slow push-ins, elegant serif type with wide letter-spacing (pad gold text so Arabic harakat are not clipped), soft piano or strings, very few words, lingering final frame with the logo.",
+  "group": "Edit footage",
+  "img": "/static/style-luxury.jpg"
+ },
+ {
+  "id": "clinical",
+  "name": "Medical & clinical",
+  "desc": "Clean white and blue, precise annotated callouts.",
+  "prompt": "Medical and clinical: a clean white-and-blue look, precise annotated callouts and labels, calm confident music, clear step-by-step structure, cross-sections or 3D anatomy at the heavy level, nothing graphic or gory, facts only from the materials.",
+  "group": "Edit footage",
+  "img": "/static/style-clinical.jpg"
+ },
+ {
+  "id": "kinetic",
+  "name": "Kinetic typography",
+  "desc": "The words are the visuals, synced to voice or beat.",
+  "prompt": "Kinetic typography: the text itself is the main visual, animated word by word in sync with the voice or the beat, bold layouts with strong hierarchy, few images, smooth easing.",
+  "group": "Animation (2D)",
+  "img": "/static/style-kinetic.jpg"
+ },
+ {
+  "id": "explainer",
+  "name": "Flat explainer",
+  "desc": "Motion graphics, icons and diagrams, step by step.",
+  "prompt": "Explainer: motion graphics with icons, simple diagrams and step-by-step visuals, one idea per scene, clear captions or voice, friendly music, a summary at the end.",
+  "group": "Animation (2D)",
+  "img": "/static/style-explainer.jpg"
+ },
+ {
+  "id": "isometric",
+  "name": "Isometric 2D",
+  "desc": "Isometric blocks and scenes that build up piece by piece.",
+  "group": "Animation (2D)",
+  "prompt": "Isometric 2D animation (HyperFrames, SVG/CSS): flat illustrations on a true 30° isometric grid, blocks, buildings and devices that build up piece by piece, soft shadows, a limited palette of 3-4 colours, smooth easing.",
+  "img": "/static/style-isometric.jpg"
+ },
+ {
+  "id": "dataviz",
+  "name": "Data & charts",
+  "desc": "Counting numbers, charts that draw on, one hero statistic.",
+  "group": "Animation (2D)",
+  "prompt": "Data and charts: animated numbers counting up, bar, line and donut charts that draw on, one big hero statistic with a short label, a clean grid on a dark or light dashboard look. Every number comes from the user's material.",
+  "img": "/static/style-dataviz.jpg"
+ },
+ {
+  "id": "map",
+  "name": "Map animation",
+  "desc": "Real maps: regions light up, pins drop, routes draw.",
+  "group": "Animation (2D)",
+  "prompt": "Map animation: real map shapes (the Default assets Maps folder has Iraq provinces and world GeoJSON), regions lighting up, pins dropping, dashed routes drawing between cities, the camera zooming in to the place.",
+  "img": "/static/style-map.jpg"
+ },
+ {
+  "id": "uimock",
+  "name": "App / UI mockup",
+  "desc": "Screens in a phone or laptop, taps and sliding cards.",
+  "group": "Animation (2D)",
+  "prompt": "App / UI mockup: the product's screens inside a phone or laptop frame, a finger or cursor tapping, cards sliding in, zooms on the key feature. Use real screenshots when given, otherwise a clean mock interface.",
+  "img": "/static/style-uimock.jpg"
+ },
+ {
+  "id": "paper",
+  "name": "Paper cut-out",
+  "desc": "Layered paper with soft shadows and parallax.",
+  "group": "Animation (2D)",
+  "prompt": "Paper cut-out: layered paper shapes with soft drop shadows, parallax between layers, slightly imperfect edges and paper texture, a warm craft palette, stepped stop-motion-like movement.",
+  "img": "/static/style-paper.jpg"
+ },
+ {
+  "id": "neon",
+  "name": "Neon synthwave",
+  "desc": "Glowing neon type, retro sun and grid, 80s music.",
+  "group": "Animation (2D)",
+  "prompt": "Neon synthwave: a dark purple night, glowing neon text and lines, a retro striped sun and perspective grid, chrome or futuristic display type, 80s synthwave music.",
+  "img": "/static/style-neon.jpg"
+ },
+ {
+  "id": "swiss",
+  "name": "Swiss typography",
+  "desc": "Strict grid, huge numerals, red and black.",
+  "group": "Animation (2D)",
+  "prompt": "Swiss typography: a strict grid, huge numerals and bold sans-serif type, flat red / black / off-white, asymmetric layouts, hard cuts and snappy slides, almost no pictures.",
+  "img": "/static/style-swiss.jpg"
+ },
+ {
+  "id": "doodle",
+  "name": "Hand-drawn doodle",
+  "desc": "Marker lines that draw themselves on, handwriting.",
+  "group": "Animation (2D)",
+  "prompt": "Hand-drawn doodle / whiteboard: marker strokes that draw themselves on, handwritten labels, simple sketched icons and arrows on paper-white, friendly pacing.",
+  "img": "/static/style-doodle.jpg"
+ },
+ {
+  "id": "gradient",
+  "name": "Liquid gradient & glass",
+  "desc": "Drifting colour blobs behind frosted-glass cards.",
+  "group": "Animation (2D)",
+  "prompt": "Liquid gradient and glass: soft blurred colour blobs drifting in the background, frosted-glass cards (glassmorphism) with clean type, slow flowing motion, a premium tech feel.",
+  "img": "/static/style-gradient.jpg"
+ },
+ {
+  "id": "peeps",
+  "name": "Illustrated people",
+  "group": "Animation (2D)",
+  "img": "/static/style-peeps.jpg",
+  "desc": "Hand-drawn Open Peeps characters act out the story.",
+  "prompt": "Illustrated people (Open Peeps, CC0: SVG/PNG in `assets/Default assets/Illustrations/Open Peeps/` - Standing, Sitting, Scenes): hand-drawn black-line characters on a warm off-white background, each on a flat colour circle or shape, speech bubbles with a hard offset shadow, handwritten asides, simple doodle accents (stars, squiggles). Cast them as the story's people (customer, doctor, team), recolour shapes to the brand colours, and animate with gentle pop-ins, bobbing and bubbles that type on. Built in HyperFrames (HTML/SVG)."
+ },
+ {
+  "id": "product",
+  "name": "3D product hero",
+  "desc": "Photoreal product on a pedestal in a soft studio.",
+  "prompt": "3D product hero (Blender Cycles): photoreal renders of the product on a pedestal in a soft studio, slow turntable and push-ins, real reflections, feature callouts with thin lines, an end card with the offer and contact. Build the product from the photos or models given.",
+  "group": "3D",
+  "img": "/static/style-product.jpg"
+ },
+ {
+  "id": "lowpoly",
+  "name": "Low poly",
+  "desc": "Faceted shapes, flat shading, bright colours.",
+  "group": "3D",
+  "prompt": "Low poly 3D (Blender): faceted low-poly landscapes and objects with flat shading, bright saturated colours, a sunny sky gradient, gentle camera flights.",
+  "img": "/static/style-lowpoly.jpg"
+ },
+ {
+  "id": "clay",
+  "name": "Clay",
+  "desc": "Soft rounded clay characters in pastel colours.",
+  "group": "3D",
+  "prompt": "Clay 3D (Blender): soft rounded shapes and characters with a matte clay material and tiny fingerprint bumps, pastel colours, soft studio light, bouncy playful animation.",
+  "img": "/static/style-clay.jpg"
+ },
+ {
+  "id": "toon",
+  "name": "Toon (cel-shaded)",
+  "desc": "Flat colour bands with ink outlines.",
+  "group": "3D",
+  "prompt": "Toon / cel-shaded 3D (Blender: Shader-to-RGB colour bands + Freestyle ink outlines): a bright cartoon palette and snappy animation.",
+  "img": "/static/style-toon.jpg"
+ },
+ {
+  "id": "diorama",
+  "name": "Isometric 3D diorama",
+  "desc": "A tiny cut-away room seen from above.",
+  "group": "3D",
+  "prompt": "Isometric 3D diorama (Blender, orthographic camera): a small cut-away room or scene with real furniture models, soft light, a slow rotation.",
+  "img": "/static/style-diorama.jpg"
+ },
+ {
+  "id": "abstract",
+  "name": "Abstract 3D",
+  "desc": "Floating glossy, iridescent and glass shapes.",
+  "group": "3D",
+  "prompt": "Abstract 3D loop (Blender): floating glossy, iridescent and glass shapes, depth of field, coloured rim lights, seamless looping motion; good for intros and backgrounds.",
+  "img": "/static/style-abstract.jpg"
+ },
+ {
+  "id": "glass",
+  "name": "Glass & iridescent",
+  "desc": "Refractive glass, rainbow sheen, dark reflections.",
+  "group": "3D",
+  "prompt": "Glass and iridescent (Blender Cycles): refractive glass and iridescent materials on a dark reflective floor, studio HDRI reflections, slow elegant camera moves.",
+  "img": "/static/style-glass.jpg"
+ },
+ {
+  "id": "logo3d",
+  "name": "3D logo reveal",
+  "desc": "The name in gold or chrome with rim lights.",
+  "group": "3D",
+  "prompt": "3D logo / text reveal (Blender): the brand name or logo extruded in 3D (gold, chrome or the brand colour), dramatic rim lights, a reflective floor, a light sweep that reveals it.",
+  "img": "/static/style-logo3d.jpg"
+ },
+ {
+  "id": "medical3d",
+  "name": "Medical 3D",
+  "desc": "Dental and anatomy models on clinical blue.",
+  "group": "3D",
+  "prompt": "Medical 3D (Blender): clean anatomical or dental models (scans, implants, tooth cross-sections) on a clinical blue backdrop, scan lines and soft glows, precise labels; nothing graphic.",
+  "img": "/static/style-medical3d.jpg"
+ },
+ {
+  "id": "interior",
+  "name": "Interior walkthrough",
+  "desc": "Real rooms, daylight through windows.",
+  "group": "3D",
+  "prompt": "Interior / architectural 3D (Blender Cycles): realistic rooms with real furniture models, daylight through windows, eye-level walk-through camera moves; for clinics, showrooms and real estate.",
+  "img": "/static/style-interior.jpg"
+ },
+ {
+  "id": "space",
+  "name": "Space",
+  "desc": "Planets, atmospheres and star fields.",
+  "group": "3D",
+  "prompt": "Space and cosmic 3D (Blender): planets with glowing atmospheres, star fields, slow cosmic camera drifts and epic music; for intros, education and big announcements.",
+  "img": "/static/style-space.jpg"
+ }
+]
