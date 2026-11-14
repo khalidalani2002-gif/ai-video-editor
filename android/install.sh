@@ -22,7 +22,14 @@ fi
 
 say "1/5 Termux packages"
 yes | pkg update -y >/dev/null 2>&1 || true
-pkg install -y proot-distro git curl termux-tools procps </dev/null
+PKGS="proot-distro git curl termux-tools procps"
+if ! pkg install -y $PKGS </dev/null; then
+  # a random mirror can be down or rate-limited: fall back to Termux's official server and try again
+  echo "  The package mirror failed; switching to packages.termux.dev and retrying."
+  echo "deb https://packages-cf.termux.dev/apt/termux-main stable main" > "$PREFIX/etc/apt/sources.list"
+  rm -rf "$PREFIX/etc/termux/chosen_mirrors" 2>/dev/null || true
+  apt-get update </dev/null && pkg install -y $PKGS </dev/null
+fi
 
 say "2/5 Phone storage (allow the permission prompt)"
 if [ ! -d "$HOME/storage/shared" ]; then termux-setup-storage || true; sleep 4; fi
