@@ -1,5 +1,16 @@
 // Review Room front end: library, player with a frame-accurate timeline, pins/boxes on the frame, notes sent to Claude.
 const $ = (s) => document.querySelector(s);
+// Every request to our own server carries this run's token (the server refuses POSTs without it, so other web pages
+// cannot drive the app). After the server restarts the old token is refused: reload to get the new one.
+const RR_TOKEN = document.querySelector('meta[name="rr-token"]')?.content || "";
+const _fetch = window.fetch.bind(window);
+window.fetch = (u, opt = {}) => {
+  if (typeof u === "string" && u.startsWith("/")) opt = { ...opt, headers: { ...(opt.headers || {}), "X-RR-Token": RR_TOKEN } };
+  return _fetch(u, opt).then((r) => {
+    if (r.status === 403) r.clone().json().then((j) => { if (j.error === "token") location.reload(); }).catch(() => {});
+    return r;
+  });
+};
 const api = (u, opt) => fetch(u, opt).then((r) => r.json());
 const post = (u, body) => api(u, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
 const enc = encodeURIComponent;

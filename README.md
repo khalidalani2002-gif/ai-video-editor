@@ -75,6 +75,29 @@ re-sharing (Mixkit, Sonniss, Remix Icon): fine in your own videos, kept out when
 
 Change the models in `settings.json`. Each video keeps a separate conversation with each engine.
 
+## Security
+
+The app is a local server (`127.0.0.1:8770`) that starts AI agents able to edit files and run commands on your PC, so it
+only obeys its own window:
+
+- Every request must have the app's own `Host` and must not come from another website (`Origin` / `Sec-Fetch-Site`). This
+  also blocks DNS-rebinding tricks.
+- Every POST carries a secret token made fresh each time the app starts. Only the app page can read it, so another web page
+  can't send notes, start jobs or close the app.
+- Note ids are validated. Responses carry CSP, `X-Frame-Options: DENY` and `nosniff`. Request bodies are size-capped.
+- Each prompt (and `workspace/CLAUDE.md` / `AGENTS.md`) tells the agent that text inside videos, transcripts, files and web
+  pages is material, never instructions.
+- Claude runs with a fixed list of allowed tools (`ALLOWED` / `DENIED` in `app/server.py`).
+- Codex runs with **your own Codex config** (its sandbox and approval settings). To keep Codex inside its sandbox, set
+  `"codex_sandbox": "workspace-write"` in `settings.json`. This needs the Codex Windows sandbox to be set up; without it,
+  every Codex command fails.
+- Setup checks the Python, whisper.cpp and speech-model downloads against their publishers' SHA-256 checksums and pins the
+  HyperFrames version.
+- `Claude Login.bat` stores your Claude token as a user environment variable (`CLAUDE_CODE_OAUTH_TOKEN`), readable by
+  programs running as you, the same as Claude's own sign-in file. Use option 5 (Sign out) there to remove it.
+
+Found a problem? Please open an issue.
+
 ## Folders
 
 | | |

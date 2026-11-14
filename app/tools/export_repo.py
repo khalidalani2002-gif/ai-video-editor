@@ -15,7 +15,7 @@ FILES = ["Start Review Room.vbs", "Setup.bat", "Claude Login.bat", "README.md", 
          "workspace/CLAUDE.md", "workspace/AGENTS.md", "workspace/tools/find_asset.py"]
 DIRS = ["app/static", "app/luts", "workspace/.claude/skills/video-use"]
 DATA = ["styles.json", "slop-audio.json", "restricted-assets.json", "mixkit-catalog.json", "hyperframes-registry.json"]
-SETTINGS = {"port": 8770, "whisper_port": 8771, "model": "claude-opus-5-5", "codex_model": "gpt-5.6-sol", "use_restricted_assets": True}
+SETTINGS = {"port": 8770, "whisper_port": 8771, "model": "claude-opus-5-5", "codex_model": "gpt-5.6-sol", "codex_sandbox": "", "use_restricted_assets": True}
 GITATTRIBUTES = """* text=auto
 *.bat text eol=crlf
 *.vbs text eol=crlf

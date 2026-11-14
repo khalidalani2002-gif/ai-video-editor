@@ -10,7 +10,16 @@ $Root = Split-Path -Parent $App
 function Step($m) { Write-Host "`n== $m" -ForegroundColor Cyan }
 function Have($c) { [bool](Get-Command $c -ErrorAction SilentlyContinue) }
 function RefreshPath { $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User") }
-function Get-File($url, $out) { if (-not (Test-Path $out)) { Write-Host "  downloading $url"; Invoke-WebRequest -UseBasicParsing $url -OutFile $out } }
+# download once; with $sha256 the file must match the publisher's checksum or it is deleted and setup stops
+function Get-File($url, $out, $sha256) {
+  if (-not (Test-Path $out)) { Write-Host "  downloading $url"; Invoke-WebRequest -UseBasicParsing $url -OutFile $out }
+  if ($sha256) {
+    $h = (Get-FileHash $out -Algorithm SHA256).Hash.ToLower()
+    if ($h -ne $sha256.ToLower()) { Remove-Item $out -Force; throw "Checksum mismatch for $url (got $h). The download was deleted; run Setup again." }
+    Write-Host "  checksum ok"
+  }
+}
+$HyperframesVersion = "0.9.43"   # pinned: update deliberately, after testing
 
 if (-not (Have "winget")) {
   Write-Host "winget (App Installer) is missing. Install 'App Installer' from the Microsoft Store, then run Setup.bat again." -ForegroundColor Red
@@ -22,7 +31,7 @@ $py = Join-Path $App "python\python.exe"
 if (Test-Path $py) { Write-Host "  ok $py" }
 else {
   $zip = Join-Path $env:TEMP "python-3.12.10-embed-amd64.zip"
-  Get-File "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip" $zip
+  Get-File "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip" $zip "4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3"   # SHA-256 from python.org's sigstore bundle
   Expand-Archive $zip -DestinationPath (Join-Path $App "python") -Force
   Write-Host "  installed $py"
 }
@@ -47,7 +56,7 @@ Step "3/7 Video skills for Claude and Codex (HyperFrames)"
 $npx = (Get-Command npx.cmd -ErrorAction SilentlyContinue).Source
 if (-not $npx) { $npx = Join-Path $env:ProgramFiles "nodejs
 px.cmd" }
-Push-Location (Join-Path $Root "workspace"); & $npx --yes hyperframes@latest skills update; Pop-Location
+Push-Location (Join-Path $Root "workspace"); & $npx --yes "hyperframes@$HyperframesVersion" skills update; Pop-Location
 
 Step "4/7 Speech (optional: Speak notes and transcripts)"
 if (-not $Speech) { Write-Host "  skipped (run Setup.bat again and answer Y to add it)" }
@@ -60,7 +69,7 @@ else {
     $asset = $null
     if ($nvidia) { $asset = $assets | Where-Object { $_.name -match "win-cuda-12.*x64\.zip|cublas-12.*x64\.zip" } | Select-Object -First 1 }
     if (-not $asset) { $asset = $assets | Where-Object { $_.name -eq "whisper-bin-x64.zip" } | Select-Object -First 1 }
-    $zip = Join-Path $env:TEMP $asset.name; Get-File $asset.browser_download_url $zip
+    $zip = Join-Path $env:TEMP $asset.name; Get-File $asset.browser_download_url $zip ($asset.digest -replace "^sha256:", "")   # GitHub's published digest
     New-Item -ItemType Directory -Force (Join-Path $WD "Release") | Out-Null
     Expand-Archive $zip -DestinationPath $WD -Force
     $cli = Get-ChildItem $WD -Recurse -Filter whisper-cli.exe | Select-Object -First 1
@@ -68,8 +77,8 @@ else {
   } else { Write-Host "  ok whisper.cpp" }
   [Environment]::SetEnvironmentVariable("HYPERFRAMES_WHISPER_PATH", (Join-Path $WD "Release\whisper-cli.exe"), "User")
   $WM = Join-Path $HOME ".cache\hyperframes\whisper\models"; New-Item -ItemType Directory -Force $WM | Out-Null
-  Get-File "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin" (Join-Path $WM "ggml-large-v3-turbo.bin")
-  Get-File "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin" (Join-Path $WM "ggml-small.bin")
+  Get-File "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin" (Join-Path $WM "ggml-large-v3-turbo.bin") "1fc70f774d38eb169993ac391eea357ef47c88757ef72ee5943879b7e8e2bc69"
+  Get-File "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin" (Join-Path $WM "ggml-small.bin") "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b"
   Write-Host "  speech ready"
 }
 
