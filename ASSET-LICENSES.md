@@ -1,6 +1,6 @@
 # Default assets: sources and licences
 
-The **public asset pack** (Google Drive, see the README) holds only assets whose licences allow re-sharing:
+The **public asset pack** ([Google Drive](https://drive.google.com/drive/folders/14AIdAfaVGiNaJlnlpApHV9dwMUfGM-5N)) holds only assets whose licences allow re-sharing:
 
 | Folder | Source | Licence |
 |---|---|---|

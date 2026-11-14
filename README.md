@@ -27,7 +27,7 @@ You need Windows 10/11 (an NVIDIA GPU helps) and a Claude subscription (for Clau
    folder in the Claude desktop app's Code tab) and paste this:
 
    > Install the default assets for this app. Download every file from this public Google Drive folder:
-   > **ASSET_PACK_LINK**
+   > **https://drive.google.com/drive/folders/14AIdAfaVGiNaJlnlpApHV9dwMUfGM-5N**
    > (use `pip install gdown` then `gdown --folder <link>` if a normal download is blocked), unzip each
    > "Default assets - *.zip" into `workspace\assets\` so that `workspace\assets\Default assets\3D`, `Fonts`, `Icons`… exist,
    > then run `app\python\python.exe app\tools\fetch_mixkit_assets.py` to get the Mixkit music, sound effects and footage.
